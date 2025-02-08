@@ -1,0 +1,9 @@
+/node_modules
+.env
+/frontend/node_modules
+<<<<<<< HEAD
+.DS_Store
+=======
+.DS_Store
+/frontend/dist
+>>>>>>> 5ce791b (finalizing project and ready for deployment)
