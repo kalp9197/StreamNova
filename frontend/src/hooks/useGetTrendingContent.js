@@ -8,8 +8,12 @@ const useGetTrendingContent = () => {
 
 	useEffect(() => {
 		const getTrendingContent = async () => {
-			const res = await axios.get(`/api/v1/${contentType}/trending`);
-			setTrendingContent(res.data.content);
+			try {
+				const res = await axios.get(`/api/v1/${contentType}/trending`);
+				setTrendingContent(res.data.content);
+			} catch (error) {
+				console.error("Error fetching trending content:", error);
+			}
 		};
 
 		getTrendingContent();
@@ -17,4 +21,5 @@ const useGetTrendingContent = () => {
 
 	return { trendingContent };
 };
+
 export default useGetTrendingContent;

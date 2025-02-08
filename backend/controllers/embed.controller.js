@@ -9,26 +9,25 @@ export const getEmbedUrl = (req, res) => {
     return res.status(400).json({ error: 'Type must be either "movie" or "tv"' });
   }
 
-  let url = `https://vidsrc.xyz/embed/${type}`;
-
-  if (tmdb) url += `/${tmdb}`;
+  let url = `https://vidsrc.xyz/embed/${type}/${tmdb}`;
+  
   if (type === 'tv' && season && episode) {
     url += `/${season}-${episode}`;
   }
-  if (sub_url) url += `?sub_url=${encodeURIComponent(sub_url)}`;
-  if (ds_lang) url += `&ds_lang=${ds_lang}`;
+
+  let queryParams = [];
+
+  if (sub_url) {
+    queryParams.push(`sub_url=${encodeURIComponent(sub_url)}`);
+  }
+
+  if (ds_lang) {
+    queryParams.push(`ds_lang=${ds_lang}`);
+  }
+
+  if (queryParams.length > 0) {
+    url += `?${queryParams.join('&')}`;
+  }
 
   res.json({ embedUrl: url });
-};
-
-export const getLatestMovies = (req, res) => {
-  const { page } = req.params;
-  const url = `https://vidsrc.xyz/movies/latest/page-${page}.json`;
-  res.json({ latestMoviesUrl: url });
-};
-
-export const getLatestEpisodes = (req, res) => {
-  const { page } = req.params;
-  const url = `https://vidsrc.xyz/episodes/latest/page-${page}.json`;
-  res.json({ latestEpisodesUrl: url });
 };

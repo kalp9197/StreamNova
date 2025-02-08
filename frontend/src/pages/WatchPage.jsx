@@ -5,7 +5,7 @@ import axios from "axios";
 import Navbar from "../components/Navbar";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import ReactPlayer from "react-player";
-import { ORIGINAL_IMG_BASE_URL, SMALL_IMG_BASE_URL } from "../utils/constants";
+import { ORIGINAL_IMG_BASE_URL } from "../utils/constants";
 import { formatReleaseDate } from "../utils/dateFunction";
 import WatchPageSkeleton from "../components/skeletons/WatchPageSkeleton";
 
@@ -17,7 +17,8 @@ const WatchPage = () => {
 	const [content, setContent] = useState({});
 	const [similarContent, setSimilarContent] = useState([]);
 	const { contentType } = useContentStore();
-	const [embedUrl, setEmbedUrl] = useState(""); // Store Vidsrc URL
+	const [embedUrl, setEmbedUrl] = useState("");
+	const [subtitleUrl, setSubtitleUrl] = useState("");
 
 	const sliderRef = useRef(null);
 
@@ -31,7 +32,6 @@ const WatchPage = () => {
 				setTrailers([]);
 			}
 		};
-
 		getTrailers();
 	}, [contentType, id]);
 
@@ -45,7 +45,6 @@ const WatchPage = () => {
 				setSimilarContent([]);
 			}
 		};
-
 		getSimilarContent();
 	}, [contentType, id]);
 
@@ -56,11 +55,21 @@ const WatchPage = () => {
 				const res = await axios.get(`/api/v1/${contentType}/${id}/details`);
 				setContent(res.data.content);
 
-				// Generate Vidsrc URL for streaming
+				// Generate streaming URL
 				let embed = `https://vidsrc.xyz/embed/${contentType}/${id}`;
 				if (contentType === "tv" && res.data.content.season_number && res.data.content.episode_number) {
 					embed = `https://vidsrc.xyz/embed/tv/${id}/${res.data.content.season_number}-${res.data.content.episode_number}`;
 				}
+
+				// Fetch subtitle URL (assuming API provides subtitles)
+				const subtitles = res.data.content.subtitles || "";
+				setSubtitleUrl(subtitles);
+
+				// Append subtitles if available
+				if (subtitles) {
+					embed += `?sub_url=${encodeURIComponent(subtitles)}&ds_lang=en`;
+				}
+
 				setEmbedUrl(embed);
 			} catch (error) {
 				setContent(null);
@@ -68,10 +77,10 @@ const WatchPage = () => {
 				setLoading(false);
 			}
 		};
-
 		getContentDetails();
 	}, [contentType, id]);
 
+	// Navigation for multiple trailers
 	const handleNext = () => {
 		if (currentTrailerIdx < trailers.length - 1) setCurrentTrailerIdx(currentTrailerIdx + 1);
 	};
@@ -79,6 +88,7 @@ const WatchPage = () => {
 		if (currentTrailerIdx > 0) setCurrentTrailerIdx(currentTrailerIdx - 1);
 	};
 
+	// Horizontal scroll for similar content
 	const scrollLeft = () => {
 		if (sliderRef.current) sliderRef.current.scrollBy({ left: -sliderRef.current.offsetWidth, behavior: "smooth" });
 	};
@@ -86,6 +96,7 @@ const WatchPage = () => {
 		if (sliderRef.current) sliderRef.current.scrollBy({ left: sliderRef.current.offsetWidth, behavior: "smooth" });
 	};
 
+	// Show skeleton while loading
 	if (loading)
 		return (
 			<div className="min-h-screen bg-black p-10">
@@ -93,6 +104,7 @@ const WatchPage = () => {
 			</div>
 		);
 
+	// Handle content not found
 	if (!content) {
 		return (
 			<div className="bg-black text-white h-screen flex justify-center items-center">
@@ -106,10 +118,10 @@ const WatchPage = () => {
 
 	return (
 		<div className="bg-black min-h-screen text-white">
-				<Navbar />
+			<Navbar />
 			<div className="mx-auto container px-4 py-8">
 
-				{/* 🎬 Movie/Episode Video Section */}
+				{/* 🎬 Movie/Episode Streaming Section */}
 				<div className="w-full flex justify-center">
 					<div className="relative w-full max-w-5xl aspect-video rounded-lg overflow-hidden shadow-lg">
 						<iframe
@@ -164,7 +176,7 @@ const WatchPage = () => {
 				{/* 📌 Movie Details */}
 				<div className="flex flex-col md:flex-row items-center justify-between gap-10 max-w-5xl mx-auto mt-10">
 					<div className="text-center md:text-left">
-						<h2 className="text-4xl font-bold text-balance">{content?.title || content?.name}</h2>
+						<h2 className="text-4xl font-bold">{content?.title || content?.name}</h2>
 						<p className="mt-2 text-lg text-gray-300">
 							{formatReleaseDate(content?.release_date || content?.first_air_date)} |{" "}
 							{content?.adult ? (
@@ -177,7 +189,7 @@ const WatchPage = () => {
 					</div>
 					<img
 						src={ORIGINAL_IMG_BASE_URL + content?.poster_path}
-						alt="Poster image"
+						alt="Poster"
 						className="max-h-[500px] rounded-md border-4 border-gray-700 shadow-xl"
 					/>
 				</div>
