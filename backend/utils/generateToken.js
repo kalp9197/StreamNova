@@ -2,8 +2,9 @@ import jwt from "jsonwebtoken";
 import { ENV_VARS } from "../config/envVars.js";
 
 export const generateTokenAndSetCookie = (userId, res) => {
-	const token = jwt.sign({ userId }, ENV_VARS.JWT_SECRET, { expiresIn: "15d" });
+  const token = jwt.sign({ userId }, ENV_VARS.JWT_SECRET, { expiresIn: "15d" });
 
+<<<<<<< HEAD
 	res.cookie("jwt-netflix", token, {
 <<<<<<< HEAD
 		maxAge: 15 * 24 * 60 * 60 * 1000, // 15 days in MS
@@ -16,6 +17,14 @@ export const generateTokenAndSetCookie = (userId, res) => {
 >>>>>>> 5ce791b (finalizing project and ready for deployment)
 		secure: ENV_VARS.NODE_ENV !== "development",
 	});
+=======
+  res.cookie("jwt-netflix", token, {
+    maxAge: 15 * 24 * 60 * 60 * 1000,
+    httpOnly: true,
+    sameSite: "strict",
+    secure: ENV_VARS.NODE_ENV !== "development",
+  });
+>>>>>>> f15fdd7 (finalizing project and ready for deployment)
 
-	return token;
+  return token;
 };

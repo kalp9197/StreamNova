@@ -88,7 +88,7 @@ const AuthScreen = () => {
   return (
     <div className="hero-bg relative">
       <header className="max-w-6xl mx-auto flex items-center justify-between p-4 pb-10">
-        <h1 className="text-3xl pb-2 text-white">NovaStream</h1>
+        <h1 className="text-3xl pb-2 text-white">StreamNova</h1>
         <Link
           to={"/login"}
           className="text-white bg-violet-600 py-1 px-2 rounded"

@@ -74,7 +74,7 @@ const Navbar = () => {
       <div className="flex items-center gap-12 z-50">
         <Link to="/">
           <h1 className="text-3xl items-center justify-center pb-2">
-            NovaStream
+            StreamNova
           </h1>
         </Link>
 

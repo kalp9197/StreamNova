@@ -111,7 +111,7 @@ const SignUpPage = () => {
     <div className="h-screen w-full hero-bg">
       <header className="max-w-6xl mx-auto flex items-center justify-between p-4">
         <Link to={"/"}>
-          <h1 className="text-3xl pb-2 text-white">NovaStream</h1>
+          <h1 className="text-3xl pb-2 text-white">StreamNova</h1>
         </Link>
       </header>
 

@@ -313,7 +313,6 @@ const WatchPage = () => {
     <div className="bg-black min-h-screen text-white">
       <Navbar />
       <div className="mx-auto container px-4 py-8">
-        {/* 🎬 Movie/Episode Streaming Section */}
         <div className="w-full flex justify-center">
           <div className="relative w-full max-w-5xl aspect-video rounded-lg overflow-hidden shadow-lg">
             <iframe
@@ -326,7 +325,6 @@ const WatchPage = () => {
           </div>
         </div>
 
-        {/* 🎥 Trailer Section */}
         {trailers.length > 0 && (
           <>
             <h3 className="text-3xl font-bold text-center mt-10 mb-4">
@@ -371,7 +369,6 @@ const WatchPage = () => {
           </>
         )}
 
-        {/* 📌 Movie Details */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-10 max-w-5xl mx-auto mt-10">
           <div className="text-center md:text-left">
             <h2 className="text-4xl font-bold">
