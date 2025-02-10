@@ -2,6 +2,10 @@
 
 StreamNova is a powerful full-stack web application for browsing and discovering movies and TV shows. Built using **React (Vite), Node.js, Express, MongoDB, and TailwindCSS**, it features user authentication, search functionality, search history, and a modern, responsive UI. Users can stream almost any new movie or series for free.  
 
+# **🚀 Live Site**  
+# 🌐 **[StreamNova - Watch Movies & TV Shows](https://streamnova.onrender.com)**  
+
+
 ## 🚀 Features  
 - 🔐 **User Authentication** (JWT-based secure login & signup)  
 - 🎥 **Browse Movies & TV Shows** (Protected Routes)  
