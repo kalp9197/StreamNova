@@ -1,7 +1,3 @@
-import dotenv from "dotenv";
-
-dotenv.config();
-
 export const ENV_VARS = {
   SUPABASE_URL: process.env.VITE_SUPABASE_URL,
   SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY,
