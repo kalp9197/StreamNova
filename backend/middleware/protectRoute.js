@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { User } from "../models/user.model.js";
+import { supabase } from "../config/supabase.js";
 import { ENV_VARS } from "../config/envVars.js";
 
 export const protectRoute = async (req, res, next) => {
@@ -20,15 +20,35 @@ export const protectRoute = async (req, res, next) => {
         .json({ success: false, message: "Unauthorized - Invalid Token" });
     }
 
-    const user = await User.findById(decoded.userId).select("-password");
+    // Get user from Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.admin.getUserById(decoded.userId);
 
-    if (!user) {
+    if (authError || !authData.user) {
       return res
         .status(404)
         .json({ success: false, message: "User not found" });
     }
 
-    req.user = user;
+    // Get user profile
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('username, avatar_url, display_name')
+      .eq('id', authData.user.id)
+      .single();
+
+    if (profileError) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User profile not found" });
+    }
+
+    req.user = {
+      id: authData.user.id,
+      email: authData.user.email,
+      username: profile.username,
+      image: profile.avatar_url,
+      display_name: profile.display_name,
+    };
 
     next();
   } catch (error) {

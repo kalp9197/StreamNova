@@ -1,4 +1,4 @@
-import { User } from "../models/user.model.js";
+import { supabase } from "../config/supabase.js";
 import bcryptjs from "bcryptjs";
 import { generateTokenAndSetCookie } from "../utils/generateToken.js";
 
@@ -27,44 +27,88 @@ export async function signup(req, res) {
         });
     }
 
-    const existingUserByEmail = await User.findOne({ email: email });
+    // Use Supabase Auth for user creation
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+    });
 
-    if (existingUserByEmail) {
+    if (authError) {
+      if (authError.message.includes('already registered')) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Email already exists" });
+      }
       return res
         .status(400)
-        .json({ success: false, message: "Email already exists" });
+        .json({ success: false, message: authError.message });
     }
 
-    const existingUserByUsername = await User.findOne({ username: username });
+    if (!authData.user) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Failed to create user" });
+    }
 
-    if (existingUserByUsername) {
+    // Check if username already exists in profiles table
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('username', username)
+      .single();
+
+    if (existingProfile) {
+      // If username exists, we need to delete the auth user we just created
+      await supabase.auth.admin.deleteUser(authData.user.id);
       return res
         .status(400)
         .json({ success: false, message: "Username already exists" });
     }
 
-    const salt = await bcryptjs.genSalt(10);
-    const hashedPassword = await bcryptjs.hash(password, salt);
-
     const PROFILE_PICS = ["/avatar1.png", "/avatar2.png", "/avatar3.png"];
-
     const image = PROFILE_PICS[Math.floor(Math.random() * PROFILE_PICS.length)];
 
-    const newUser = new User({
-      email,
-      password: hashedPassword,
-      username,
-      image,
-    });
+    // Create profile record
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        id: authData.user.id,
+        username,
+        avatar_url: image,
+        display_name: username,
+      });
 
-    generateTokenAndSetCookie(newUser._id, res);
-    await newUser.save();
+    if (profileError) {
+      // If profile creation fails, delete the auth user
+      await supabase.auth.admin.deleteUser(authData.user.id);
+      return res
+        .status(500)
+        .json({ success: false, message: "Failed to create user profile" });
+    }
+
+    // Create user metrics record
+    await supabase
+      .from('user_metrics')
+      .insert({
+        user_id: authData.user.id,
+      });
+
+    // Create notification preferences record
+    await supabase
+      .from('notification_preferences')
+      .insert({
+        user_id: authData.user.id,
+      });
+
+    generateTokenAndSetCookie(authData.user.id, res);
 
     res.status(201).json({
       success: true,
       user: {
-        ...newUser._doc,
-        password: "",
+        id: authData.user.id,
+        email: authData.user.email,
+        username,
+        image,
       },
     });
   } catch (error) {
@@ -83,28 +127,47 @@ export async function login(req, res) {
         .json({ success: false, message: "All fields are required" });
     }
 
-    const user = await User.findOne({ email: email });
-    if (!user) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Invalid credentials" });
-    }
+    // Use Supabase Auth for login
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-    const isPasswordCorrect = await bcryptjs.compare(password, user.password);
-
-    if (!isPasswordCorrect) {
+    if (authError) {
       return res
         .status(400)
         .json({ success: false, message: "Invalid credentials" });
     }
 
-    generateTokenAndSetCookie(user._id, res);
+    if (!authData.user) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid credentials" });
+    }
+
+    // Get user profile
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('username, avatar_url, display_name')
+      .eq('id', authData.user.id)
+      .single();
+
+    if (profileError) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User profile not found" });
+    }
+
+    generateTokenAndSetCookie(authData.user.id, res);
 
     res.status(200).json({
       success: true,
       user: {
-        ...user._doc,
-        password: "",
+        id: authData.user.id,
+        email: authData.user.email,
+        username: profile.username,
+        image: profile.avatar_url,
+        display_name: profile.display_name,
       },
     });
   } catch (error) {
@@ -115,6 +178,9 @@ export async function login(req, res) {
 
 export async function logout(req, res) {
   try {
+    // Sign out from Supabase
+    await supabase.auth.signOut();
+    
     res.clearCookie("jwt-netflix");
     res.status(200).json({ success: true, message: "Logged out successfully" });
   } catch (error) {
@@ -125,7 +191,6 @@ export async function logout(req, res) {
 
 export async function authCheck(req, res) {
   try {
-    console.log("req.user:", req.user);
     res.status(200).json({ success: true, user: req.user });
   } catch (error) {
     console.log("Error in authCheck controller", error.message);
