@@ -1,9 +1,10 @@
 import dotenv from "dotenv";
 
-dotenv.config({ path: './backend/.env' });
+dotenv.config();
 
 export const ENV_VARS = {
-  MONGO_URI: process.env.MONGO_URI,
+  SUPABASE_URL: process.env.VITE_SUPABASE_URL,
+  SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY,
   PORT: process.env.PORT || 9000,
   JWT_SECRET: process.env.JWT_SECRET,
   NODE_ENV: process.env.NODE_ENV,

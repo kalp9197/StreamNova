@@ -18,7 +18,7 @@ StreamNova is a powerful full-stack web application for browsing and discovering
 ## 🛠 Tech Stack  
 - **Frontend:** React (Vite) + TailwindCSS  
 - **Backend:** Node.js + Express.js  
-- **Database:** MongoDB  
+- **Database:** Supabase (PostgreSQL)  
 - **Authentication:** JWT & Cookies  
 - **API:** UsesTMDB api and external movie APIs for db  
 
@@ -36,12 +36,14 @@ npm run dev
 ```
 
 ### 3️⃣ Set up environment variables
-Create a `.env` file inside **backend/** and add:
+Click the "Connect to Supabase" button in the top right, then the environment variables will be automatically configured. You can also manually create a `.env` file in the root directory and add:
 ```env
 PORT=8000
-MONGO_URI=your_mongodb_connection_string
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 JWT_SECRET=your_secret_key
 NODE_ENV=development
+TMDB_API_KEY=your_tmdb_api_key
 ```
 
 ## 🔗 API Endpoints
