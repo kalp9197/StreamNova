@@ -1,0 +1,17 @@
+node_modules
+.next
+out
+build
+dist
+*.lock
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+.env
+.env.local
+.env.production.local
+.env.development.local
+*.log
+coverage
+.vercel
+
