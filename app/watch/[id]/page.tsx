@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/authUser';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useContentStore } from '@/store/content';
@@ -27,12 +27,29 @@ import type {
   CrewMember,
 } from '@/types';
 
+// Vidking Player event types
+interface VidkingPlayerEvent {
+  type: 'PLAYER_EVENT';
+  data: {
+    event: 'timeupdate' | 'play' | 'pause' | 'ended' | 'seeked';
+    currentTime: number;
+    duration: number;
+    progress: number;
+    id: string;
+    mediaType: 'movie' | 'tv';
+    season?: number;
+    episode?: number;
+    timestamp: number;
+  };
+}
+
 export default function WatchPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuthStore();
   const { contentType } = useContentStore();
 
@@ -43,18 +60,15 @@ export default function WatchPage({
   const [content, setContent] = useState<Movie>({} as Movie);
   const [similarContent, setSimilarContent] = useState<Movie[]>([]);
   const [embedUrl, setEmbedUrl] = useState('');
-  const [watchProgress, setWatchProgress] = useState<{
-    currentTime: number;
-    duration: number;
-  } | null>(null);
-  const [savedProgress, setSavedProgress] = useState<number>(0);
   const [credits, setCredits] = useState<Credits | null>(null);
+  const [currentSeason, setCurrentSeason] = useState<number | null>(null);
+  const [currentEpisode, setCurrentEpisode] = useState<number | null>(null);
 
   const sliderRef = useRef<HTMLDivElement>(null);
-  const progressSaveIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const progressSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   );
-  const startTimeRef = useRef<number>(Date.now());
 
   const { getHistoryItem, updateWatchHistory, fetchWatchHistory } =
     useWatchHistoryStore();
@@ -77,100 +91,135 @@ export default function WatchPage({
     [contentType, id]
   );
 
-  // Load saved watch progress from store
+  // Handle Vidking Player progress events via postMessage
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      // Security: Only accept messages from Vidking domain
+      if (
+        event.origin !== 'https://www.vidking.net' &&
+        event.origin !== 'https://vidking.net'
+      ) {
+        return;
+      }
+
+      try {
+        const message: VidkingPlayerEvent = JSON.parse(event.data);
+
+        if (message.type === 'PLAYER_EVENT' && message.data) {
+          const { event: eventType, currentTime, duration, progress, season, episode } =
+            message.data;
+
+          // Only save progress for significant events (not every timeupdate)
+          const shouldSave =
+            eventType === 'play' ||
+            eventType === 'pause' ||
+            eventType === 'ended' ||
+            eventType === 'seeked' ||
+            (eventType === 'timeupdate' && progress % 5 < 0.1); // Save every ~5% progress
+
+          if (shouldSave && user && content.title) {
+            // Debounce progress saves
+            if (progressSaveTimeoutRef.current) {
+              clearTimeout(progressSaveTimeoutRef.current);
+            }
+
+            progressSaveTimeoutRef.current = setTimeout(async () => {
+              try {
+                await cachedPost(
+                  '/api/v1/watch/history',
+                  {
+                    contentId: parseInt(id),
+                    contentType,
+                    title: content.title || content.name,
+                    posterPath: content.poster_path || null,
+                    backdropPath: content.backdrop_path || null,
+                    currentTime: Math.floor(currentTime),
+                    duration: Math.floor(duration),
+                    seasonNumber: contentType === 'tv' ? (season || currentSeason) : undefined,
+                    episodeNumber: contentType === 'tv' ? (episode || currentEpisode) : undefined,
+                  },
+                  {
+                    invalidateCache: ['/api/v1/watch/history'],
+                  }
+                );
+
+                // Update local store
+                updateWatchHistory({
+                  contentId: parseInt(id),
+                  contentType,
+                  title: content.title || content.name,
+                  posterPath: content.poster_path || null,
+                  backdropPath: content.backdrop_path || null,
+                  currentTime: Math.floor(currentTime),
+                  duration: Math.floor(duration),
+                  seasonNumber: contentType === 'tv' ? (season || currentSeason) : undefined,
+                  episodeNumber: contentType === 'tv' ? (episode || currentEpisode) : undefined,
+                });
+              } catch (_error) {
+                // Silent fail - don't interrupt viewing experience
+              }
+            }, 2000); // Debounce for 2 seconds
+          }
+        }
+      } catch (_error) {
+        // Ignore invalid messages
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      if (progressSaveTimeoutRef.current) {
+        clearTimeout(progressSaveTimeoutRef.current);
+      }
+    };
+  }, [
+    id,
+    contentType,
+    content,
+    user,
+    updateWatchHistory,
+    currentSeason,
+    currentEpisode,
+  ]);
+
+  // Load saved watch progress and set season/episode from URL or history
   useEffect(() => {
     if (!id || !content.title) return;
 
     // Fetch watch history if not already loaded
     fetchWatchHistory();
 
-    const item = getHistoryItem(parseInt(id), contentType);
-    if (item) {
-      setSavedProgress(item.currentTime);
-      setWatchProgress({
-        currentTime: item.currentTime,
-        duration: item.duration || 0,
-      });
-    }
-  }, [id, contentType, content.title, getHistoryItem, fetchWatchHistory]);
+    // Get season/episode from URL params or saved history
+    const seasonParam = searchParams?.get('season');
+    const episodeParam = searchParams?.get('episode');
 
-  // Save watch progress periodically
-  const saveWatchProgress = useCallback(async () => {
-    if (!id || !content.title || !user) return;
-
-    const elapsedTime = Math.floor((Date.now() - startTimeRef.current) / 1000);
-    const currentTime = savedProgress + elapsedTime;
-
-    try {
-      await cachedPost(
-        '/api/v1/watch/history',
-        {
-          contentId: parseInt(id),
-          contentType,
-          title: content.title || content.name,
-          posterPath: content.poster_path || null,
-          backdropPath: content.backdrop_path || null,
-          currentTime,
-          duration: watchProgress?.duration || 0,
-          seasonNumber: content.season_number,
-          episodeNumber: content.episode_number,
-        },
-        {
-          invalidateCache: ['/api/v1/watch/history'], // Invalidate watch history cache
+    if (contentType === 'tv') {
+      if (seasonParam && episodeParam) {
+        setCurrentSeason(parseInt(seasonParam));
+        setCurrentEpisode(parseInt(episodeParam));
+      } else {
+        // Try to get from saved history (get most recent episode)
+        const item = getHistoryItem(parseInt(id), contentType);
+        if (item?.seasonNumber && item?.episodeNumber) {
+          setCurrentSeason(item.seasonNumber);
+          setCurrentEpisode(item.episodeNumber);
+        } else {
+          // Default to season 1, episode 1
+          setCurrentSeason(1);
+          setCurrentEpisode(1);
         }
-      );
-
-      // Update local store
-      updateWatchHistory({
-        contentId: parseInt(id),
-        contentType,
-        title: content.title || content.name,
-        posterPath: content.poster_path || null,
-        backdropPath: content.backdrop_path || null,
-        currentTime,
-        duration: watchProgress?.duration || 0,
-        seasonNumber: content.season_number,
-        episodeNumber: content.episode_number,
-      });
-    } catch (_error) {
-      // Silent fail - don't interrupt viewing experience
+      }
     }
   }, [
     id,
     contentType,
-    content,
-    savedProgress,
-    watchProgress,
-    user,
-    updateWatchHistory,
+    content.title,
+    searchParams,
+    getHistoryItem,
+    fetchWatchHistory,
   ]);
-
-  // Start tracking progress when page loads
-  useEffect(() => {
-    if (!embedUrl || !content.title) return;
-
-    startTimeRef.current = Date.now();
-
-    // Save progress every 30 seconds
-    progressSaveIntervalRef.current = setInterval(() => {
-      saveWatchProgress();
-    }, 30000);
-
-    // Save progress when user leaves page
-    const handleBeforeUnload = () => {
-      saveWatchProgress();
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      if (progressSaveIntervalRef.current) {
-        clearInterval(progressSaveIntervalRef.current);
-      }
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      saveWatchProgress(); // Final save
-    };
-  }, [embedUrl, content.title, saveWatchProgress]);
 
   useEffect(() => {
     params.then((p) => setId(p.id));
@@ -223,23 +272,6 @@ export default function WatchPage({
           }
         );
         setContent(res.content);
-
-        let embed = `https://vidsrc.xyz/embed/${contentType}/${id}`;
-        if (
-          contentType === 'tv' &&
-          res.content.season_number &&
-          res.content.episode_number
-        ) {
-          embed = `https://vidsrc.xyz/embed/tv/${id}/${res.content.season_number}-${res.content.episode_number}`;
-        }
-
-        const subtitles = res.content.subtitles || '';
-
-        if (subtitles) {
-          embed += `?sub_url=${encodeURIComponent(subtitles)}&ds_lang=en`;
-        }
-
-        setEmbedUrl(embed);
       } catch (_error) {
         setContent({} as Movie);
       } finally {
@@ -261,6 +293,91 @@ export default function WatchPage({
     getContentDetails();
     getCredits();
   }, [detailsCacheKey, creditsCacheKey, contentType, id]);
+
+  // Build Vidking Player embed URL
+  useEffect(() => {
+    if (!id || !content.title) return;
+
+    // Determine season/episode for TV shows
+    let season = currentSeason;
+    let episode = currentEpisode;
+
+    if (contentType === 'tv') {
+      if (!season || !episode) {
+        // Try to get from URL params first
+        const seasonParam = searchParams?.get('season');
+        const episodeParam = searchParams?.get('episode');
+        
+        if (seasonParam && episodeParam) {
+          season = parseInt(seasonParam);
+          episode = parseInt(episodeParam);
+        } else {
+          // Try to get from saved history
+          fetchWatchHistory();
+          const historyItem = getHistoryItem(parseInt(id), contentType);
+          if (historyItem?.seasonNumber && historyItem?.episodeNumber) {
+            season = historyItem.seasonNumber;
+            episode = historyItem.episodeNumber;
+          } else {
+            // Default to season 1, episode 1
+            season = 1;
+            episode = 1;
+          }
+        }
+        setCurrentSeason(season);
+        setCurrentEpisode(episode);
+      }
+    }
+
+    // Fetch watch history to get saved progress
+    fetchWatchHistory();
+    const historyItem = getHistoryItem(
+      parseInt(id),
+      contentType,
+      contentType === 'tv' ? season : undefined,
+      contentType === 'tv' ? episode : undefined
+    );
+
+    // Build Vidking Player URL
+    let vidkingUrl = '';
+    const params = new URLSearchParams();
+
+    // Set primary color (Netflix red)
+    params.append('color', 'e50914');
+
+    // Enable autoplay
+    params.append('autoPlay', 'true');
+
+    if (contentType === 'movie') {
+      vidkingUrl = `https://www.vidking.net/embed/movie/${id}`;
+    } else {
+      // TV show
+      vidkingUrl = `https://www.vidking.net/embed/tv/${id}/${season}/${episode}`;
+      // Enable TV-specific features
+      params.append('nextEpisode', 'true');
+      params.append('episodeSelector', 'true');
+    }
+
+    // Add saved progress if available
+    if (historyItem && historyItem.currentTime > 0 && historyItem.duration > 0) {
+      // Only resume if not completed (less than 90%)
+      const progressPercent = (historyItem.currentTime / historyItem.duration) * 100;
+      if (progressPercent < 90) {
+        params.append('progress', Math.floor(historyItem.currentTime).toString());
+      }
+    }
+
+    setEmbedUrl(`${vidkingUrl}?${params.toString()}`);
+  }, [
+    id,
+    contentType,
+    content.title,
+    currentSeason,
+    currentEpisode,
+    searchParams,
+    getHistoryItem,
+    fetchWatchHistory,
+  ]);
 
   const handleNext = () => {
     if (currentTrailerIdx < trailers.length - 1)
@@ -328,11 +445,14 @@ export default function WatchPage({
           <div className="relative w-full max-w-5xl aspect-video rounded-lg overflow-hidden shadow-2xl">
             {embedUrl ? (
               <iframe
+                ref={iframeRef}
                 src={embedUrl}
                 width="100%"
-                height="100%"
+                height="600"
+                frameBorder="0"
                 allowFullScreen
                 className="rounded-lg border-2 border-gray-800 shadow-xl"
+                title="Vidking Player"
               ></iframe>
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-gray-900">

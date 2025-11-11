@@ -30,7 +30,9 @@ interface WatchHistoryState {
   getProgress: (contentId: number, contentType: 'movie' | 'tv') => number;
   getHistoryItem: (
     contentId: number,
-    contentType: 'movie' | 'tv'
+    contentType: 'movie' | 'tv',
+    seasonNumber?: number,
+    episodeNumber?: number
   ) => WatchHistoryItem | undefined;
   clearHistory: () => void;
 }
@@ -81,15 +83,31 @@ export const useWatchHistoryStore = create<WatchHistoryState>((set, get) => ({
 
   updateWatchHistory: (item) => {
     set((state) => {
-      const existingIndex = state.watchHistory.findIndex(
-        (h) =>
-          h.contentId === item.contentId && h.contentType === item.contentType
-      );
+      // For TV shows, match by contentId, contentType, season, and episode
+      // For movies, match by contentId and contentType
+      const existingIndex = state.watchHistory.findIndex((h) => {
+        const contentMatch =
+          h.contentId === item.contentId && h.contentType === item.contentType;
+
+        if (item.contentType === 'tv') {
+          return (
+            contentMatch &&
+            h.seasonNumber === item.seasonNumber &&
+            h.episodeNumber === item.episodeNumber
+          );
+        }
+
+        return contentMatch;
+      });
 
       if (existingIndex >= 0) {
         // Update existing item
         const updated = [...state.watchHistory];
-        updated[existingIndex] = { ...updated[existingIndex], ...item };
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          ...item,
+          lastWatched: new Date().toISOString(),
+        };
         return { watchHistory: updated };
       } else {
         // Add new item
@@ -122,11 +140,25 @@ export const useWatchHistoryStore = create<WatchHistoryState>((set, get) => ({
 
   getHistoryItem: (
     contentId: number,
-    contentType: 'movie' | 'tv'
+    contentType: 'movie' | 'tv',
+    seasonNumber?: number,
+    episodeNumber?: number
   ): WatchHistoryItem | undefined => {
-    return get().watchHistory.find(
-      (h) => h.contentId === contentId && h.contentType === contentType
-    );
+    return get().watchHistory.find((h) => {
+      const contentMatch =
+        h.contentId === contentId && h.contentType === contentType;
+
+      if (contentType === 'tv' && seasonNumber && episodeNumber) {
+        return (
+          contentMatch &&
+          h.seasonNumber === seasonNumber &&
+          h.episodeNumber === episodeNumber
+        );
+      }
+
+      // For movies or when season/episode not specified, return first match
+      return contentMatch;
+    });
   },
 
   clearHistory: () => {

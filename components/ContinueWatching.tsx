@@ -83,7 +83,11 @@ const ContinueWatching = () => {
               className="min-w-[300px] md:min-w-[400px] group relative"
             >
               <Link
-                href={`/watch/${item.contentId}`}
+                href={
+                  item.contentType === 'tv' && item.seasonNumber && item.episodeNumber
+                    ? `/watch/${item.contentId}?season=${item.seasonNumber}&episode=${item.episodeNumber}`
+                    : `/watch/${item.contentId}`
+                }
                 onClick={() => setContentType(item.contentType)}
                 className="block relative rounded-lg overflow-hidden bg-gray-900"
               >
@@ -136,7 +140,13 @@ const ContinueWatching = () => {
                     {item.title}
                   </h3>
                   <div className="flex items-center justify-between text-sm text-gray-400">
-                    <span className="capitalize">{item.contentType}</span>
+                    <span className="capitalize">
+                      {item.contentType}
+                      {item.contentType === 'tv' &&
+                        item.seasonNumber &&
+                        item.episodeNumber &&
+                        ` • S${item.seasonNumber}E${item.episodeNumber}`}
+                    </span>
                     {item.duration > 0 && (
                       <span>
                         {formatTime(item.currentTime)} /{' '}
