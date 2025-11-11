@@ -27,6 +27,12 @@ import type {
   CrewMember,
 } from '@/types';
 
+// Player types
+type PlayerType = 'vidking' | 'videasy' | 'vidlink' | 'vidsrc' | 'multiserver';
+
+// Multi Server sub-types
+type MultiServerType = 'api1' | 'api2' | 'api3' | 'api4';
+
 // Vidking Player event types
 interface VidkingPlayerEvent {
   type: 'PLAYER_EVENT';
@@ -40,6 +46,58 @@ interface VidkingPlayerEvent {
     season?: number;
     episode?: number;
     timestamp: number;
+  };
+}
+
+// VIDEASY Player event types
+interface VideasyPlayerEvent {
+  id: string;
+  type: 'movie' | 'tv' | 'anime';
+  progress: number;
+  timestamp: number;
+  duration: number;
+  season?: number;
+  episode?: number;
+}
+
+// VidLink Player event types
+interface VidlinkPlayerEvent {
+  type: 'PLAYER_EVENT';
+  data: {
+    event: 'play' | 'pause' | 'seeked' | 'ended' | 'timeupdate';
+    currentTime: number;
+    duration: number;
+    mtmdbId: number;
+    mediaType: 'movie' | 'tv';
+    season?: number;
+    episode?: number;
+  };
+}
+
+interface VidlinkMediaData {
+  [key: string]: {
+    id: number;
+    type: 'movie' | 'tv';
+    title: string;
+    poster_path?: string;
+    backdrop_path?: string;
+    progress?: {
+      watched: number;
+      duration: number;
+    };
+    last_season_watched?: string;
+    last_episode_watched?: string;
+    show_progress?: {
+      [key: string]: {
+        season: string;
+        episode: string;
+        progress: {
+          watched: number;
+          duration: number;
+        };
+      };
+    };
+    last_updated?: number;
   };
 }
 
@@ -63,6 +121,8 @@ export default function WatchPage({
   const [credits, setCredits] = useState<Credits | null>(null);
   const [currentSeason, setCurrentSeason] = useState<number | null>(null);
   const [currentEpisode, setCurrentEpisode] = useState<number | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<PlayerType>('vidking');
+  const [selectedMultiServer, setSelectedMultiServer] = useState<MultiServerType>('api2'); // Default to Multi Language
 
   const sliderRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -72,6 +132,30 @@ export default function WatchPage({
 
   const { getHistoryItem, updateWatchHistory, fetchWatchHistory } =
     useWatchHistoryStore();
+
+  // Load player preference from localStorage
+  useEffect(() => {
+    const savedPlayer = localStorage.getItem('preferredPlayer') as PlayerType;
+    const savedMultiServer = localStorage.getItem('preferredMultiServer') as MultiServerType;
+    if (savedPlayer === 'vidking' || savedPlayer === 'videasy' || savedPlayer === 'vidlink' || savedPlayer === 'vidsrc' || savedPlayer === 'multiserver') {
+      setSelectedPlayer(savedPlayer);
+    }
+    if (savedMultiServer === 'api1' || savedMultiServer === 'api2' || savedMultiServer === 'api3' || savedMultiServer === 'api4') {
+      setSelectedMultiServer(savedMultiServer);
+    }
+  }, []);
+
+  // Save player preference to localStorage
+  const handlePlayerChange = useCallback((player: PlayerType) => {
+    setSelectedPlayer(player);
+    localStorage.setItem('preferredPlayer', player);
+  }, []);
+
+  // Save multi server preference to localStorage
+  const handleMultiServerChange = useCallback((server: MultiServerType) => {
+    setSelectedMultiServer(server);
+    localStorage.setItem('preferredMultiServer', server);
+  }, []);
 
   // Memoize cache keys
   const detailsCacheKey = useMemo(
@@ -91,23 +175,38 @@ export default function WatchPage({
     [contentType, id]
   );
 
-  // Handle Vidking Player progress events via postMessage
+  // Handle player progress events via postMessage (Vidking, VIDEASY, VidLink, and Vidsrc)
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
-      // Security: Only accept messages from Vidking domain
-      if (
-        event.origin !== 'https://www.vidking.net' &&
-        event.origin !== 'https://vidking.net'
-      ) {
+      // Security: Only accept messages from trusted domains
+      const isVidking =
+        event.origin === 'https://www.vidking.net' ||
+        event.origin === 'https://vidking.net';
+      const isVideasy =
+        event.origin === 'https://player.videasy.net' ||
+        event.origin === 'https://www.videasy.net';
+      const isVidlink =
+        event.origin === 'https://vidlink.pro' ||
+        event.origin === 'https://www.vidlink.pro';
+      const isVidsrc =
+        event.origin === 'https://embed.vidsrc.pk' ||
+        event.origin === 'https://www.vidsrc.pk' ||
+        event.origin === 'https://vidsrc.pk';
+      const isVidsrcWtf =
+        event.origin === 'https://www.vidsrc.wtf' ||
+        event.origin === 'https://vidsrc.wtf';
+
+      if (!isVidking && !isVideasy && !isVidlink && !isVidsrc && !isVidsrcWtf) {
         return;
       }
 
       try {
-        const message: VidkingPlayerEvent = JSON.parse(event.data);
+        const messageData = JSON.parse(event.data);
 
-        if (message.type === 'PLAYER_EVENT' && message.data) {
+        // Handle Vidking Player events
+        if (isVidking && messageData.type === 'PLAYER_EVENT' && messageData.data) {
           const { event: eventType, currentTime, duration, progress, season, episode } =
-            message.data;
+            messageData.data;
 
           // Only save progress for significant events (not every timeupdate)
           const shouldSave =
@@ -159,6 +258,256 @@ export default function WatchPage({
                 // Silent fail - don't interrupt viewing experience
               }
             }, 2000); // Debounce for 2 seconds
+          }
+        }
+
+        // Handle VIDEASY Player events
+        if (isVideasy && messageData.id) {
+          const { id: contentId, type, progress, timestamp, duration, season, episode } =
+            messageData as VideasyPlayerEvent;
+
+          // Only save progress for significant updates (every ~5% or on pause/end)
+          const shouldSave =
+            progress % 5 < 0.1 || // Save every ~5% progress
+            progress >= 90; // Save when near completion
+
+          if (shouldSave && user && content.title && parseInt(contentId) === parseInt(id)) {
+            // Debounce progress saves
+            if (progressSaveTimeoutRef.current) {
+              clearTimeout(progressSaveTimeoutRef.current);
+            }
+
+            progressSaveTimeoutRef.current = setTimeout(async () => {
+              try {
+                await cachedPost(
+                  '/api/v1/watch/history',
+                  {
+                    contentId: parseInt(id),
+                    contentType,
+                    title: content.title || content.name,
+                    posterPath: content.poster_path || null,
+                    backdropPath: content.backdrop_path || null,
+                    currentTime: Math.floor(timestamp),
+                    duration: Math.floor(duration),
+                    seasonNumber: contentType === 'tv' ? (season || currentSeason) : undefined,
+                    episodeNumber: contentType === 'tv' ? (episode || currentEpisode) : undefined,
+                  },
+                  {
+                    invalidateCache: ['/api/v1/watch/history'],
+                  }
+                );
+
+                // Update local store
+                updateWatchHistory({
+                  contentId: parseInt(id),
+                  contentType,
+                  title: content.title || content.name,
+                  posterPath: content.poster_path || null,
+                  backdropPath: content.backdrop_path || null,
+                  currentTime: Math.floor(timestamp),
+                  duration: Math.floor(duration),
+                  seasonNumber: contentType === 'tv' ? (season || currentSeason) : undefined,
+                  episodeNumber: contentType === 'tv' ? (episode || currentEpisode) : undefined,
+                });
+              } catch (_error) {
+                // Silent fail - don't interrupt viewing experience
+              }
+            }, 2000); // Debounce for 2 seconds
+          }
+        }
+
+        // Handle VidLink Player events
+        if (isVidlink) {
+          // Handle MEDIA_DATA (progress storage)
+          if (messageData.type === 'MEDIA_DATA' && messageData.data) {
+            const mediaData = messageData.data as VidlinkMediaData;
+            // VidLink stores data in localStorage automatically, but we can sync it to our backend
+            const contentId = parseInt(id);
+            const contentData = mediaData[contentId.toString()];
+            
+            if (contentData && user && content.title) {
+              const progress = contentData.progress;
+              if (progress && progress.watched > 0 && progress.duration > 0) {
+                // Debounce progress saves
+                if (progressSaveTimeoutRef.current) {
+                  clearTimeout(progressSaveTimeoutRef.current);
+                }
+
+                progressSaveTimeoutRef.current = setTimeout(async () => {
+                  try {
+                    const seasonNumber = contentData.last_season_watched 
+                      ? parseInt(contentData.last_season_watched) 
+                      : undefined;
+                    const episodeNumber = contentData.last_episode_watched 
+                      ? parseInt(contentData.last_episode_watched) 
+                      : undefined;
+
+                    await cachedPost(
+                      '/api/v1/watch/history',
+                      {
+                        contentId,
+                        contentType,
+                        title: content.title || content.name,
+                        posterPath: contentData.poster_path || content.poster_path || null,
+                        backdropPath: contentData.backdrop_path || content.backdrop_path || null,
+                        currentTime: Math.floor(progress.watched),
+                        duration: Math.floor(progress.duration),
+                        seasonNumber: contentType === 'tv' ? (seasonNumber || currentSeason) : undefined,
+                        episodeNumber: contentType === 'tv' ? (episodeNumber || currentEpisode) : undefined,
+                      },
+                      {
+                        invalidateCache: ['/api/v1/watch/history'],
+                      }
+                    );
+
+                    // Update local store
+                    updateWatchHistory({
+                      contentId,
+                      contentType,
+                      title: content.title || content.name,
+                      posterPath: contentData.poster_path || content.poster_path || null,
+                      backdropPath: contentData.backdrop_path || content.backdrop_path || null,
+                      currentTime: Math.floor(progress.watched),
+                      duration: Math.floor(progress.duration),
+                      seasonNumber: contentType === 'tv' ? (seasonNumber || currentSeason) : undefined,
+                      episodeNumber: contentType === 'tv' ? (episodeNumber || currentEpisode) : undefined,
+                    });
+                  } catch (_error) {
+                    // Silent fail - don't interrupt viewing experience
+                  }
+                }, 2000); // Debounce for 2 seconds
+              }
+            }
+          }
+
+          // Handle PLAYER_EVENT (real-time events)
+          if (messageData.type === 'PLAYER_EVENT' && messageData.data) {
+            const { event: eventType, currentTime, duration, mtmdbId, season, episode } =
+              messageData.data as VidlinkPlayerEvent['data'];
+
+            // Only save progress for significant events
+            const shouldSave =
+              eventType === 'play' ||
+              eventType === 'pause' ||
+              eventType === 'ended' ||
+              eventType === 'seeked' ||
+              (eventType === 'timeupdate' && currentTime % 30 < 1); // Save every ~30 seconds
+
+            if (shouldSave && user && content.title && mtmdbId === parseInt(id)) {
+              // Debounce progress saves
+              if (progressSaveTimeoutRef.current) {
+                clearTimeout(progressSaveTimeoutRef.current);
+              }
+
+              progressSaveTimeoutRef.current = setTimeout(async () => {
+                try {
+                  await cachedPost(
+                    '/api/v1/watch/history',
+                    {
+                      contentId: parseInt(id),
+                      contentType,
+                      title: content.title || content.name,
+                      posterPath: content.poster_path || null,
+                      backdropPath: content.backdrop_path || null,
+                      currentTime: Math.floor(currentTime),
+                      duration: Math.floor(duration),
+                      seasonNumber: contentType === 'tv' ? (season || currentSeason) : undefined,
+                      episodeNumber: contentType === 'tv' ? (episode || currentEpisode) : undefined,
+                    },
+                    {
+                      invalidateCache: ['/api/v1/watch/history'],
+                    }
+                  );
+
+                  // Update local store
+                  updateWatchHistory({
+                    contentId: parseInt(id),
+                    contentType,
+                    title: content.title || content.name,
+                    posterPath: content.poster_path || null,
+                    backdropPath: content.backdrop_path || null,
+                    currentTime: Math.floor(currentTime),
+                    duration: Math.floor(duration),
+                    seasonNumber: contentType === 'tv' ? (season || currentSeason) : undefined,
+                    episodeNumber: contentType === 'tv' ? (episode || currentEpisode) : undefined,
+                  });
+                } catch (_error) {
+                  // Silent fail - don't interrupt viewing experience
+                }
+              }, 2000); // Debounce for 2 seconds
+            }
+          }
+        }
+
+        // Handle Vidsrc Player events (if they support progress tracking)
+        // Note: Vidsrc may not have documented progress tracking API
+        // This is a placeholder for future implementation
+        if (isVidsrc) {
+          // Vidsrc progress tracking can be added here if they provide postMessage API
+          // For now, we'll rely on manual tracking or their internal system
+        }
+
+        // Handle Vidsrc.wtf (Multi Server) Player events
+        if (isVidsrcWtf) {
+          // Handle MEDIA_DATA (progress storage)
+          if (messageData.type === 'MEDIA_DATA' && messageData.data) {
+            const mediaData = messageData.data as Record<string, any>;
+            const contentId = parseInt(id);
+            const contentData = mediaData[contentId.toString()];
+            
+            if (contentData && user && content.title) {
+              const progress = contentData.progress;
+              if (progress && progress.watched > 0 && progress.duration > 0) {
+                // Debounce progress saves
+                if (progressSaveTimeoutRef.current) {
+                  clearTimeout(progressSaveTimeoutRef.current);
+                }
+
+                progressSaveTimeoutRef.current = setTimeout(async () => {
+                  try {
+                    const seasonNumber = contentData.last_season_watched 
+                      ? parseInt(contentData.last_season_watched) 
+                      : undefined;
+                    const episodeNumber = contentData.last_episode_watched 
+                      ? parseInt(contentData.last_episode_watched) 
+                      : undefined;
+
+                    await cachedPost(
+                      '/api/v1/watch/history',
+                      {
+                        contentId,
+                        contentType,
+                        title: content.title || content.name,
+                        posterPath: contentData.poster_path || content.poster_path || null,
+                        backdropPath: contentData.backdrop_path || content.backdrop_path || null,
+                        currentTime: Math.floor(progress.watched),
+                        duration: Math.floor(progress.duration),
+                        seasonNumber: contentType === 'tv' ? (seasonNumber || currentSeason) : undefined,
+                        episodeNumber: contentType === 'tv' ? (episodeNumber || currentEpisode) : undefined,
+                      },
+                      {
+                        invalidateCache: ['/api/v1/watch/history'],
+                      }
+                    );
+
+                    // Update local store
+                    updateWatchHistory({
+                      contentId,
+                      contentType,
+                      title: content.title || content.name,
+                      posterPath: contentData.poster_path || content.poster_path || null,
+                      backdropPath: contentData.backdrop_path || content.backdrop_path || null,
+                      currentTime: Math.floor(progress.watched),
+                      duration: Math.floor(progress.duration),
+                      seasonNumber: contentType === 'tv' ? (seasonNumber || currentSeason) : undefined,
+                      episodeNumber: contentType === 'tv' ? (episodeNumber || currentEpisode) : undefined,
+                    });
+                  } catch (_error) {
+                    // Silent fail - don't interrupt viewing experience
+                  }
+                }, 2000); // Debounce for 2 seconds
+              }
+            }
           }
         }
       } catch (_error) {
@@ -294,7 +643,7 @@ export default function WatchPage({
     getCredits();
   }, [detailsCacheKey, creditsCacheKey, contentType, id]);
 
-  // Build Vidking Player embed URL
+  // Build player embed URL based on selected player
   useEffect(() => {
     if (!id || !content.title) return;
 
@@ -338,36 +687,141 @@ export default function WatchPage({
       contentType === 'tv' ? episode : undefined
     );
 
-    // Build Vidking Player URL
-    let vidkingUrl = '';
+    let playerUrl = '';
     const params = new URLSearchParams();
 
     // Set primary color (Netflix red)
     params.append('color', 'e50914');
 
-    // Enable autoplay
-    params.append('autoPlay', 'true');
+    if (selectedPlayer === 'vidking') {
+      // Build Vidking Player URL
+      params.append('autoPlay', 'true');
 
-    if (contentType === 'movie') {
-      vidkingUrl = `https://www.vidking.net/embed/movie/${id}`;
-    } else {
-      // TV show
-      vidkingUrl = `https://www.vidking.net/embed/tv/${id}/${season}/${episode}`;
-      // Enable TV-specific features
-      params.append('nextEpisode', 'true');
-      params.append('episodeSelector', 'true');
-    }
-
-    // Add saved progress if available
-    if (historyItem && historyItem.currentTime > 0 && historyItem.duration > 0) {
-      // Only resume if not completed (less than 90%)
-      const progressPercent = (historyItem.currentTime / historyItem.duration) * 100;
-      if (progressPercent < 90) {
-        params.append('progress', Math.floor(historyItem.currentTime).toString());
+      if (contentType === 'movie') {
+        playerUrl = `https://www.vidking.net/embed/movie/${id}`;
+      } else {
+        // TV show
+        playerUrl = `https://www.vidking.net/embed/tv/${id}/${season}/${episode}`;
+        // Enable TV-specific features
+        params.append('nextEpisode', 'true');
+        params.append('episodeSelector', 'true');
       }
+
+      // Add saved progress if available
+      if (historyItem && historyItem.currentTime > 0 && historyItem.duration > 0) {
+        // Only resume if not completed (less than 90%)
+        const progressPercent = (historyItem.currentTime / historyItem.duration) * 100;
+        if (progressPercent < 90) {
+          params.append('progress', Math.floor(historyItem.currentTime).toString());
+        }
+      }
+    } else if (selectedPlayer === 'videasy') {
+      // Build VIDEASY Player URL
+      if (contentType === 'movie') {
+        playerUrl = `https://player.videasy.net/movie/${id}`;
+      } else {
+        // TV show
+        playerUrl = `https://player.videasy.net/tv/${id}/${season}/${episode}`;
+        // Enable TV-specific features
+        params.append('nextEpisode', 'true');
+        params.append('episodeSelector', 'true');
+        params.append('autoplayNextEpisode', 'true');
+        params.append('overlay', 'true');
+      }
+
+      // Add saved progress if available
+      if (historyItem && historyItem.currentTime > 0 && historyItem.duration > 0) {
+        // Only resume if not completed (less than 90%)
+        const progressPercent = (historyItem.currentTime / historyItem.duration) * 100;
+        if (progressPercent < 90) {
+          params.append('progress', Math.floor(historyItem.currentTime).toString());
+        }
+      }
+    } else if (selectedPlayer === 'vidlink') {
+      // Build VidLink Player URL
+      if (contentType === 'movie') {
+        playerUrl = `https://vidlink.pro/movie/${id}`;
+      } else {
+        // TV show
+        playerUrl = `https://vidlink.pro/tv/${id}/${season}/${episode}`;
+        // Enable next episode button
+        params.append('nextbutton', 'true');
+      }
+
+      // Set VidLink customization
+      params.append('primaryColor', 'e50914'); // Netflix red
+      params.append('secondaryColor', '170000'); // Dark red
+      params.append('iconColor', 'e50914'); // Netflix red
+      params.append('icons', 'default');
+      params.append('title', 'true');
+      params.append('poster', 'true');
+      params.append('autoplay', 'false');
+
+      // Add saved progress if available (VidLink uses startAt parameter)
+      if (historyItem && historyItem.currentTime > 0 && historyItem.duration > 0) {
+        // Only resume if not completed (less than 90%)
+        const progressPercent = (historyItem.currentTime / historyItem.duration) * 100;
+        if (progressPercent < 90) {
+          params.append('startAt', Math.floor(historyItem.currentTime).toString());
+        }
+      }
+    } else if (selectedPlayer === 'vidsrc') {
+      // Build Vidsrc Player URL
+      if (contentType === 'movie') {
+        playerUrl = `https://embed.vidsrc.pk/movie/${id}`;
+      } else {
+        // TV show - Vidsrc uses {season}-{episode} format
+        if (season && episode) {
+          playerUrl = `https://embed.vidsrc.pk/tv/${id}/${season}-${episode}`;
+        } else if (season) {
+          playerUrl = `https://embed.vidsrc.pk/tv/${id}/${season}`;
+        } else {
+          playerUrl = `https://embed.vidsrc.pk/tv/${id}`;
+        }
+      }
+
+      // Note: Vidsrc doesn't appear to support progress resume parameters
+      // Progress tracking would need to be handled manually if needed
+    } else if (selectedPlayer === 'multiserver') {
+      // Build Vidsrc.wtf Multi Server Player URL
+      const apiVersion = selectedMultiServer === 'api1' ? '1' : selectedMultiServer === 'api2' ? '2' : selectedMultiServer === 'api3' ? '3' : '4';
+      
+      if (contentType === 'movie') {
+        playerUrl = `https://vidsrc.wtf/api/${apiVersion}/movie/`;
+        params.append('id', id);
+        
+        // API 1 and 2 support color parameter
+        if (apiVersion === '1' || apiVersion === '2') {
+          params.append('color', 'e50914'); // Netflix red
+        }
+      } else {
+        // TV show
+        playerUrl = `https://vidsrc.wtf/api/${apiVersion}/tv/`;
+        params.append('id', id);
+        
+        if (season) {
+          params.append('s', season.toString());
+        }
+        if (episode) {
+          params.append('e', episode.toString());
+        }
+        
+        // API 1 and 2 support color parameter
+        if (apiVersion === '1' || apiVersion === '2') {
+          params.append('color', 'e50914'); // Netflix red
+        }
+      }
+      
+      // Note: Vidsrc.wtf doesn't appear to support progress resume parameters
+      // Progress tracking is handled via postMessage MEDIA_DATA events
     }
 
-    setEmbedUrl(`${vidkingUrl}?${params.toString()}`);
+    // Only append query string if there are parameters
+    if (params.toString()) {
+      setEmbedUrl(`${playerUrl}?${params.toString()}`);
+    } else {
+      setEmbedUrl(playerUrl);
+    }
   }, [
     id,
     contentType,
@@ -375,6 +829,8 @@ export default function WatchPage({
     currentSeason,
     currentEpisode,
     searchParams,
+    selectedPlayer,
+    selectedMultiServer,
     getHistoryItem,
     fetchWatchHistory,
   ]);
@@ -442,24 +898,188 @@ export default function WatchPage({
           transition={{ duration: 0.5 }}
           className="w-full flex justify-center mb-8"
         >
-          <div className="relative w-full max-w-5xl aspect-video rounded-lg overflow-hidden shadow-2xl">
+          {/* Responsive Container - Ensures player controls are fully visible */}
+          <div className="relative w-full max-w-5xl">
             {embedUrl ? (
-              <iframe
-                ref={iframeRef}
-                src={embedUrl}
-                width="100%"
-                height="600"
-                frameBorder="0"
-                allowFullScreen
-                className="rounded-lg border-2 border-gray-800 shadow-xl"
-                title="Vidking Player"
-              ></iframe>
+              <div className="relative w-full rounded-lg overflow-hidden border-2 border-gray-800 shadow-xl bg-black">
+                {/* Container with extra height to accommodate player controls */}
+                <div 
+                  className="relative w-full"
+                  style={{ 
+                    paddingBottom: 'calc(56.25% + 100px)',
+                    height: 0,
+                    minHeight: '700px'
+                  }}
+                >
+                  <iframe
+                    ref={iframeRef}
+                    src={embedUrl}
+                    frameBorder="0"
+                    allowFullScreen
+                    allow="encrypted-media"
+                    className="absolute top-0 left-0 w-full h-full"
+                    title={`${
+                  selectedPlayer === 'vidking' 
+                    ? 'Vidking' 
+                    : selectedPlayer === 'videasy' 
+                    ? 'VIDEASY' 
+                    : selectedPlayer === 'vidlink'
+                    ? 'VidLink'
+                    : selectedPlayer === 'vidsrc'
+                    ? 'Vidsrc'
+                    : 'Multi Server'
+                } Player`}
+                  ></iframe>
+                </div>
+              </div>
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gray-900">
-                <p className="text-gray-400">Loading video player...</p>
+              <div 
+                className="relative w-full rounded-lg overflow-hidden border-2 border-gray-800"
+                style={{ paddingBottom: '56.25%', height: 0, minHeight: '600px' }}
+              >
+                <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-gray-900">
+                  <p className="text-gray-400">Loading video player...</p>
+                </div>
               </div>
             )}
           </div>
+        </motion.div>
+
+        {/* Player Selector */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+          className="flex flex-col items-center gap-4 mt-4"
+        >
+          <div className="flex justify-center items-center gap-4 flex-wrap">
+            <span className="text-gray-400 text-sm font-medium">Player:</span>
+            <div className="flex gap-2 bg-gray-900 rounded-lg p-1 border border-gray-800 flex-wrap justify-center">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handlePlayerChange('vidking')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  selectedPlayer === 'vidking'
+                    ? 'bg-red-600 text-white shadow-lg'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`}
+              >
+                Vidking
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handlePlayerChange('videasy')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  selectedPlayer === 'videasy'
+                    ? 'bg-red-600 text-white shadow-lg'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`}
+              >
+                VIDEASY
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handlePlayerChange('vidlink')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  selectedPlayer === 'vidlink'
+                    ? 'bg-red-600 text-white shadow-lg'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`}
+              >
+                VidLink
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handlePlayerChange('vidsrc')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  selectedPlayer === 'vidsrc'
+                    ? 'bg-red-600 text-white shadow-lg'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`}
+              >
+                Vidsrc
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handlePlayerChange('multiserver')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  selectedPlayer === 'multiserver'
+                    ? 'bg-red-600 text-white shadow-lg'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`}
+              >
+                Multi Server
+              </motion.button>
+            </div>
+          </div>
+
+          {/* Multi Server Sub-Options */}
+          {selectedPlayer === 'multiserver' && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              className="flex justify-center items-center gap-4 flex-wrap"
+            >
+              <span className="text-gray-400 text-sm font-medium">Server:</span>
+              <div className="flex gap-2 bg-gray-800 rounded-lg p-1 border border-gray-700 flex-wrap justify-center">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleMultiServerChange('api1')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    selectedMultiServer === 'api1'
+                      ? 'bg-red-600 text-white shadow-lg'
+                      : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                  }`}
+                >
+                  Multi Server
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleMultiServerChange('api2')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    selectedMultiServer === 'api2'
+                      ? 'bg-red-600 text-white shadow-lg'
+                      : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                  }`}
+                >
+                  Multi Language
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleMultiServerChange('api3')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    selectedMultiServer === 'api3'
+                      ? 'bg-red-600 text-white shadow-lg'
+                      : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                  }`}
+                >
+                  Multi Embed
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleMultiServerChange('api4')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    selectedMultiServer === 'api4'
+                      ? 'bg-red-600 text-white shadow-lg'
+                      : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                  }`}
+                >
+                  Premium Embed
+                </motion.button>
+              </div>
+            </motion.div>
+          )}
         </motion.div>
 
         {trailers.length > 0 && (
