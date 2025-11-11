@@ -18,6 +18,7 @@ import { formatReleaseDate } from '@/utils/dateFunction';
 import WatchPageSkeleton from '@/components/skeletons/WatchPageSkeleton';
 import Link from 'next/link';
 import { useWatchHistoryStore } from '@/store/watchHistory';
+import StreamingSources from '@/components/StreamingSources';
 import type {
   Movie,
   Trailer,
@@ -1226,6 +1227,9 @@ export default function WatchPage({
             >
               {content?.overview}
             </motion.p>
+
+            {/* Streaming Sources */}
+            <StreamingSources contentId={id} contentType={contentType} />
 
             {/* Cast Section */}
             {credits?.cast && credits.cast.length > 0 && (
