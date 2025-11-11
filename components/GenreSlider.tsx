@@ -12,13 +12,15 @@ import { useWatchHistoryStore } from '@/store/watchHistory';
 import FavoriteButton from './FavoriteButton';
 import type { Movie } from '@/types';
 
-interface MovieSliderProps {
-  category: string;
+interface GenreSliderProps {
+  genreId: number;
+  genreName: string;
 }
 
-const MovieSlider = ({ category }: MovieSliderProps) => {
+const GenreSlider = ({ genreId, genreName }: GenreSliderProps) => {
   const { contentType } = useContentStore();
   const [content, setContent] = useState<Movie[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showArrows, setShowArrows] = useState(false);
   const [hoveredItem, setHoveredItem] = useState<number | null>(null);
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
@@ -29,26 +31,25 @@ const MovieSlider = ({ category }: MovieSliderProps) => {
 
   const sliderRef = useRef<HTMLDivElement>(null);
 
-  const formattedCategoryName =
-    category.replaceAll('_', ' ')[0].toUpperCase() +
-    category.replaceAll('_', ' ').slice(1);
-  const formattedContentType = contentType === 'movie' ? 'Movies' : 'TV Shows';
-
   // Memoize cache key
   const cacheKey = useMemo(
-    () => `/api/v1/${contentType}/category/${category}`,
-    [contentType, category]
+    () => `/api/v1/${contentType}/genre/${genreId}`,
+    [contentType, genreId]
   );
 
   useEffect(() => {
     const getContent = async () => {
+      setLoading(true);
       try {
         const res = await cachedGet<{ content: Movie[] }>(cacheKey, {
           ttl: 10 * 60 * 1000, // 10 minutes cache
         });
-        setContent(res.content);
-      } catch (_error) {
-        console.error('Error fetching content:', _error);
+        setContent(res.content || []);
+      } catch (error) {
+        console.error('Error fetching genre content:', error);
+        setContent([]);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -146,6 +147,31 @@ const MovieSlider = ({ category }: MovieSliderProps) => {
     }
   };
 
+  if (loading) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        className="bg-black text-white relative px-5 md:px-20"
+      >
+        <h2 className="mb-4 text-2xl md:text-3xl font-bold">{genreName}</h2>
+        <div className="flex space-x-4 overflow-x-scroll scrollbar-hide pb-4">
+          {[...Array(5)].map((_, i) => (
+            <div
+              key={i}
+              className="min-w-[250px] md:min-w-[300px] aspect-video bg-gray-800 rounded-lg animate-pulse"
+            />
+          ))}
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (content.length === 0) {
+    return null;
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -155,9 +181,7 @@ const MovieSlider = ({ category }: MovieSliderProps) => {
       onMouseEnter={() => setShowArrows(true)}
       onMouseLeave={() => setShowArrows(false)}
     >
-      <h2 className="mb-4 text-2xl md:text-3xl font-bold">
-        {formattedCategoryName} {formattedContentType}
-      </h2>
+      <h2 className="mb-4 text-2xl md:text-3xl font-bold">{genreName}</h2>
 
       <div
         className="flex space-x-4 overflow-x-scroll scrollbar-hide pb-4"
@@ -278,4 +302,4 @@ const MovieSlider = ({ category }: MovieSliderProps) => {
   );
 };
 
-export default MovieSlider;
+export default GenreSlider;

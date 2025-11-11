@@ -4,11 +4,16 @@ import connectDB from '@/lib/db';
 import User from '@/models/User';
 import { generateToken } from '@/lib/jwt';
 import { z } from 'zod';
+import { addCorsHeaders, handleCorsPreflight } from '@/lib/cors';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email'),
   password: z.string().min(1, 'Password is required'),
 });
+
+export async function OPTIONS(req: NextRequest) {
+  return handleCorsPreflight(req);
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,28 +23,31 @@ export async function POST(req: NextRequest) {
     const validation = loginSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json(
+      const errorResponse = NextResponse.json(
         { success: false, message: validation.error.issues[0].message },
         { status: 400 }
       );
+      return addCorsHeaders(req, errorResponse);
     }
 
     const { email, password } = validation.data;
 
     const user = await User.findOne({ email });
     if (!user) {
-      return NextResponse.json(
+      const errorResponse = NextResponse.json(
         { success: false, message: 'Invalid credentials' },
         { status: 404 }
       );
+      return addCorsHeaders(req, errorResponse);
     }
 
     const isPasswordCorrect = await bcryptjs.compare(password, user.password);
     if (!isPasswordCorrect) {
-      return NextResponse.json(
+      const errorResponse = NextResponse.json(
         { success: false, message: 'Invalid credentials' },
         { status: 400 }
       );
+      return addCorsHeaders(req, errorResponse);
     }
 
     const token = generateToken(String(user._id));
@@ -65,13 +73,14 @@ export async function POST(req: NextRequest) {
       secure: process.env.NODE_ENV !== 'development',
     });
 
-    return response;
+    return addCorsHeaders(req, response);
   } catch (error: unknown) {
     const err = error as { message?: string };
     console.log('Error in login API:', err.message);
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       { success: false, message: 'Internal server error' },
       { status: 500 }
     );
+    return addCorsHeaders(req, errorResponse);
   }
 }

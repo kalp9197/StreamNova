@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from 'react-hot-toast';
+import BackToTop from '@/components/BackToTop';
+import KeyboardShortcuts from '@/components/KeyboardShortcuts';
+import MobileBottomNav from '@/components/MobileBottomNav';
 
 export const metadata: Metadata = {
   title: 'StreamNova - Your Streaming Platform',
@@ -16,7 +19,32 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className="bg-black text-white">
         {children}
-        <Toaster />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: '#1f2937',
+              color: '#fff',
+              borderRadius: '8px',
+            },
+            success: {
+              iconTheme: {
+                primary: '#10b981',
+                secondary: '#fff',
+              },
+            },
+            error: {
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: '#fff',
+              },
+            },
+          }}
+        />
+        <BackToTop />
+        <KeyboardShortcuts />
+        <MobileBottomNav />
       </body>
     </html>
   );

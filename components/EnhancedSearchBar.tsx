@@ -98,7 +98,11 @@ const SearchResultItem = memo(
           <div className="flex-1 min-w-0">
             <p className="text-white truncate">{title}</p>
             <p className="text-xs text-gray-400 capitalize">
-              {mediaType === 'tv' ? 'TV Show' : mediaType === 'person' ? 'Person' : 'Movie'}
+              {mediaType === 'tv'
+                ? 'TV Show'
+                : mediaType === 'person'
+                  ? 'Person'
+                  : 'Movie'}
             </p>
           </div>
         </Link>
@@ -141,62 +145,59 @@ const EnhancedSearchBar = () => {
     }
   }, [selectedIndex]);
 
-  const performSearch = useCallback(
-    async (query: string) => {
-      if (!query || query.length < 2) {
-        setSearchResults([]);
-        setError(null);
-        return;
-      }
-
-      // Cancel previous request
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-
-      // Create new abort controller
-      abortControllerRef.current = new AbortController();
-      const signal = abortControllerRef.current.signal;
-
-      setIsLoading(true);
+  const performSearch = useCallback(async (query: string) => {
+    if (!query || query.length < 2) {
+      setSearchResults([]);
       setError(null);
+      return;
+    }
 
-      try {
-        const res = await cachedGet<{
-          success: boolean;
-          content: SearchResult[];
-        }>(`/api/v1/search/${encodeURIComponent(query)}`, {
-          ttl: 5 * 60 * 1000, // 5 minutes cache
-        });
+    // Cancel previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
 
-        // Check if request was aborted
-        if (signal.aborted) return;
+    // Create new abort controller
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
 
-        if (res.success && res.content) {
-          setSearchResults(res.content.slice(0, 8));
-        } else {
-          setSearchResults([]);
-        }
-      } catch (error: unknown) {
-        // Don't set error if request was aborted
-        if (signal.aborted) return;
+    setIsLoading(true);
+    setError(null);
 
-        const err = error as { response?: { status: number }; name?: string };
-        // Handle 404 as empty results, not an error
-        if (err.response?.status === 404) {
-          setSearchResults([]);
-        } else if (err.name !== 'AbortError') {
-          setError('Failed to search. Please try again.');
-          setSearchResults([]);
-        }
-      } finally {
-        if (!signal.aborted) {
-          setIsLoading(false);
-        }
+    try {
+      const res = await cachedGet<{
+        success: boolean;
+        content: SearchResult[];
+      }>(`/api/v1/search/${encodeURIComponent(query)}`, {
+        ttl: 5 * 60 * 1000, // 5 minutes cache
+      });
+
+      // Check if request was aborted
+      if (signal.aborted) return;
+
+      if (res.success && res.content) {
+        setSearchResults(res.content.slice(0, 8));
+      } else {
+        setSearchResults([]);
       }
-    },
-    []
-  );
+    } catch (error: unknown) {
+      // Don't set error if request was aborted
+      if (signal.aborted) return;
+
+      const err = error as { response?: { status: number }; name?: string };
+      // Handle 404 as empty results, not an error
+      if (err.response?.status === 404) {
+        setSearchResults([]);
+      } else if (err.name !== 'AbortError') {
+        setError('Failed to search. Please try again.');
+        setSearchResults([]);
+      }
+    } finally {
+      if (!signal.aborted) {
+        setIsLoading(false);
+      }
+    }
+  }, []);
 
   // Fetch search history (cached)
   useEffect(() => {
@@ -288,6 +289,14 @@ const EnhancedSearchBar = () => {
     [searchQuery, router]
   );
 
+  const clearSearch = useCallback(() => {
+    setSearchQuery('');
+    setSearchResults([]);
+    setError(null);
+    setSelectedIndex(-1);
+    setIsOpen(false);
+  }, []);
+
   // Enhanced keyboard navigation
   useEffect(() => {
     if (!isOpen) return;
@@ -359,7 +368,6 @@ const EnhancedSearchBar = () => {
     handleSearch,
   ]);
 
-
   // Memoize computed values
   const hasResults = useMemo(
     () => searchResults.length > 0 || searchHistory.length > 0,
@@ -428,12 +436,7 @@ const EnhancedSearchBar = () => {
         </div>
       );
     });
-  }, [
-    searchResults,
-    searchHistory.length,
-    selectedIndex,
-    setContentType,
-  ]);
+  }, [searchResults, searchHistory.length, selectedIndex, setContentType]);
 
   return (
     <div ref={searchRef} className="relative">

@@ -18,6 +18,32 @@ export interface Movie {
   season_number?: number;
   episode_number?: number;
   subtitles?: string;
+  number_of_seasons?: number;
+  number_of_episodes?: number;
+  seasons?: Season[];
+}
+
+export interface Season {
+  id: number;
+  name: string;
+  overview?: string;
+  season_number: number;
+  episode_count: number;
+  air_date?: string;
+  poster_path?: string | null;
+  episodes?: Episode[];
+}
+
+export interface Episode {
+  id: number;
+  name: string;
+  overview?: string;
+  episode_number: number;
+  season_number: number;
+  air_date?: string;
+  still_path?: string | null;
+  runtime?: number;
+  vote_average?: number;
 }
 
 export interface Genre {

@@ -5,6 +5,7 @@ import { Star, Calendar, Clock, Users } from 'lucide-react';
 import { SMALL_IMG_BASE_URL } from '@/utils/constants';
 import { GENRES } from '@/utils/constants';
 import { useEffect, useState, useRef } from 'react';
+import FavoriteButton from './FavoriteButton';
 
 interface HoverCardProps {
   content: {
@@ -119,7 +120,7 @@ const ContentHoverCard = ({ content, isVisible, position }: HoverCardProps) => {
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.9 }}
           transition={{ duration: 0.2 }}
-          className="fixed z-50 pointer-events-none"
+          className="fixed z-50"
           style={{
             left: `${adjustedPosition.x}px`,
             top: `${adjustedPosition.y}px`,
@@ -138,9 +139,21 @@ const ContentHoverCard = ({ content, isVisible, position }: HoverCardProps) => {
               </div>
             )}
             <div className="p-4">
-              <h3 className="text-lg font-bold text-white mb-2 line-clamp-2">
-                {title}
-              </h3>
+              <div className="flex items-start justify-between mb-2">
+                <h3 className="text-lg font-bold text-white line-clamp-2 flex-1">
+                  {title}
+                </h3>
+                <div className="pointer-events-auto ml-2 flex-shrink-0">
+                  <FavoriteButton
+                    contentId={content.id}
+                    contentType={content.release_date ? 'movie' : 'tv'}
+                    title={title}
+                    posterPath={content.poster_path}
+                    backdropPath={content.backdrop_path}
+                    size="sm"
+                  />
+                </div>
+              </div>
 
               <div className="flex flex-wrap items-center gap-3 mb-3">
                 {rating && (

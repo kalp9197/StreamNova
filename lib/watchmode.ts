@@ -65,7 +65,12 @@ export interface WatchmodeSearchResult {
  * Search for titles or people using external IDs or name
  */
 export async function searchWatchmode(
-  searchField: 'imdb_id' | 'tmdb_person_id' | 'tmdb_movie_id' | 'tmdb_tv_id' | 'name',
+  searchField:
+    | 'imdb_id'
+    | 'tmdb_person_id'
+    | 'tmdb_movie_id'
+    | 'tmdb_tv_id'
+    | 'name',
   searchValue: string,
   types?: 'tv' | 'movie' | 'person'
 ): Promise<WatchmodeSearchResult> {
@@ -79,8 +84,10 @@ export async function searchWatchmode(
     params.append('types', types);
   }
 
-  const response = await fetch(`${WATCHMODE_BASE_URL}/search/?${params.toString()}`);
-  
+  const response = await fetch(
+    `${WATCHMODE_BASE_URL}/search/?${params.toString()}`
+  );
+
   if (!response.ok) {
     throw new Error(`Watchmode API error: ${response.statusText}`);
   }
@@ -171,4 +178,3 @@ export async function getTitleSourcesByTMDB(
   const titleId = `${contentType}-${tmdbId}`;
   return getTitleSources(titleId, regions);
 }
-

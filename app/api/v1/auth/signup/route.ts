@@ -4,12 +4,17 @@ import connectDB from '@/lib/db';
 import User from '@/models/User';
 import { generateToken } from '@/lib/jwt';
 import { z } from 'zod';
+import { addCorsHeaders, handleCorsPreflight } from '@/lib/cors';
 
 const signupSchema = z.object({
   email: z.string().email('Invalid email'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   username: z.string().min(1, 'Username is required'),
 });
+
+export async function OPTIONS(req: NextRequest) {
+  return handleCorsPreflight(req);
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,28 +24,31 @@ export async function POST(req: NextRequest) {
     const validation = signupSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json(
+      const errorResponse = NextResponse.json(
         { success: false, message: validation.error.issues[0].message },
         { status: 400 }
       );
+      return addCorsHeaders(req, errorResponse);
     }
 
     const { email, password, username } = validation.data;
 
     const existingUserByEmail = await User.findOne({ email });
     if (existingUserByEmail) {
-      return NextResponse.json(
+      const errorResponse = NextResponse.json(
         { success: false, message: 'Email already exists' },
         { status: 400 }
       );
+      return addCorsHeaders(req, errorResponse);
     }
 
     const existingUserByUsername = await User.findOne({ username });
     if (existingUserByUsername) {
-      return NextResponse.json(
+      const errorResponse = NextResponse.json(
         { success: false, message: 'Username already exists' },
         { status: 400 }
       );
+      return addCorsHeaders(req, errorResponse);
     }
 
     const salt = await bcryptjs.genSalt(10);
@@ -81,13 +89,14 @@ export async function POST(req: NextRequest) {
       secure: process.env.NODE_ENV !== 'development',
     });
 
-    return response;
+    return addCorsHeaders(req, response);
   } catch (error: unknown) {
     const err = error as { message?: string };
     console.log('Error in signup API:', err.message);
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       { success: false, message: 'Internal server error' },
       { status: 500 }
     );
+    return addCorsHeaders(req, errorResponse);
   }
 }

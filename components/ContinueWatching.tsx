@@ -84,7 +84,9 @@ const ContinueWatching = () => {
             >
               <Link
                 href={
-                  item.contentType === 'tv' && item.seasonNumber && item.episodeNumber
+                  item.contentType === 'tv' &&
+                  item.seasonNumber &&
+                  item.episodeNumber
                     ? `/watch/${item.contentId}?season=${item.seasonNumber}&episode=${item.episodeNumber}`
                     : `/watch/${item.contentId}`
                 }

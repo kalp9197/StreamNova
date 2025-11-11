@@ -13,12 +13,19 @@ export async function GET(
 
     if (!contentType || (contentType !== 'movie' && contentType !== 'tv')) {
       return NextResponse.json(
-        { success: false, message: 'Invalid content type. Must be "movie" or "tv"' },
+        {
+          success: false,
+          message: 'Invalid content type. Must be "movie" or "tv"',
+        },
         { status: 400 }
       );
     }
 
-    const sources = await getTitleSourcesByTMDB(parseInt(id), contentType, regions);
+    const sources = await getTitleSourcesByTMDB(
+      parseInt(id),
+      contentType,
+      regions
+    );
 
     return NextResponse.json({
       success: true,
@@ -33,4 +40,3 @@ export async function GET(
     );
   }
 }
-

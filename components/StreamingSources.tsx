@@ -22,7 +22,10 @@ interface StreamingSourcesProps {
   contentType: 'movie' | 'tv';
 }
 
-const StreamingSources = ({ contentId, contentType }: StreamingSourcesProps) => {
+const StreamingSources = ({
+  contentId,
+  contentType,
+}: StreamingSourcesProps) => {
   const [sources, setSources] = useState<StreamingSource[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +34,10 @@ const StreamingSources = ({ contentId, contentType }: StreamingSourcesProps) => 
     const fetchSources = async () => {
       try {
         setLoading(true);
-        const res = await cachedGet<{ success: boolean; sources: StreamingSource[] }>(
+        const res = await cachedGet<{
+          success: boolean;
+          sources: StreamingSource[];
+        }>(
           `/api/v1/watchmode/sources/${contentId}?type=${contentType}&regions=US`,
           {
             ttl: 60 * 60 * 1000, // Cache for 1 hour
@@ -125,13 +131,16 @@ const StreamingSources = ({ contentId, contentType }: StreamingSourcesProps) => 
   }
 
   // Group sources by type
-  const groupedSources = sources.reduce((acc, source) => {
-    if (!acc[source.type]) {
-      acc[source.type] = [];
-    }
-    acc[source.type].push(source);
-    return acc;
-  }, {} as Record<string, StreamingSource[]>);
+  const groupedSources = sources.reduce(
+    (acc, source) => {
+      if (!acc[source.type]) {
+        acc[source.type] = [];
+      }
+      acc[source.type].push(source);
+      return acc;
+    },
+    {} as Record<string, StreamingSource[]>
+  );
 
   // Sort types: sub, free, rent, buy, tve
   const typeOrder = ['sub', 'free', 'rent', 'buy', 'tve'];
@@ -158,7 +167,9 @@ const StreamingSources = ({ contentId, contentType }: StreamingSourcesProps) => 
             {groupedSources[type].map((source) => (
               <motion.a
                 key={`${source.source_id}-${source.region}`}
-                href={source.web_url || source.ios_url || source.android_url || '#'}
+                href={
+                  source.web_url || source.ios_url || source.android_url || '#'
+                }
                 target="_blank"
                 rel="noopener noreferrer"
                 whileHover={{ scale: 1.05 }}
@@ -187,4 +198,3 @@ const StreamingSources = ({ contentId, contentType }: StreamingSourcesProps) => 
 };
 
 export default StreamingSources;
-

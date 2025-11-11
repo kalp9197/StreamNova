@@ -19,6 +19,7 @@ import WatchPageSkeleton from '@/components/skeletons/WatchPageSkeleton';
 import Link from 'next/link';
 import { useWatchHistoryStore } from '@/store/watchHistory';
 import StreamingSources from '@/components/StreamingSources';
+import FavoriteButton from '@/components/FavoriteButton';
 import type {
   Movie,
   Trailer,
@@ -26,6 +27,7 @@ import type {
   Genre,
   CastMember,
   CrewMember,
+  Season,
 } from '@/types';
 
 // Player types
@@ -33,22 +35,6 @@ type PlayerType = 'vidking' | 'videasy' | 'vidlink' | 'vidsrc' | 'multiserver';
 
 // Multi Server sub-types
 type MultiServerType = 'api1' | 'api2' | 'api3' | 'api4';
-
-// Vidking Player event types
-interface VidkingPlayerEvent {
-  type: 'PLAYER_EVENT';
-  data: {
-    event: 'timeupdate' | 'play' | 'pause' | 'ended' | 'seeked';
-    currentTime: number;
-    duration: number;
-    progress: number;
-    id: string;
-    mediaType: 'movie' | 'tv';
-    season?: number;
-    episode?: number;
-    timestamp: number;
-  };
-}
 
 // VIDEASY Player event types
 interface VideasyPlayerEvent {
@@ -122,11 +108,18 @@ export default function WatchPage({
   const [credits, setCredits] = useState<Credits | null>(null);
   const [currentSeason, setCurrentSeason] = useState<number | null>(null);
   const [currentEpisode, setCurrentEpisode] = useState<number | null>(null);
+  const [seasons, setSeasons] = useState<Season[]>([]);
+  const [currentSeasonData, setCurrentSeasonData] = useState<Season | null>(
+    null
+  );
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerType>('vidking');
-  const [selectedMultiServer, setSelectedMultiServer] = useState<MultiServerType>('api2'); // Default to Multi Language
+  const [selectedMultiServer, setSelectedMultiServer] =
+    useState<MultiServerType>('api2'); // Default to Multi Language
 
+  const episodeScrollRef = useRef<HTMLDivElement>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const videoPlayerRef = useRef<HTMLDivElement>(null);
   const progressSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   );
@@ -137,11 +130,24 @@ export default function WatchPage({
   // Load player preference from localStorage
   useEffect(() => {
     const savedPlayer = localStorage.getItem('preferredPlayer') as PlayerType;
-    const savedMultiServer = localStorage.getItem('preferredMultiServer') as MultiServerType;
-    if (savedPlayer === 'vidking' || savedPlayer === 'videasy' || savedPlayer === 'vidlink' || savedPlayer === 'vidsrc' || savedPlayer === 'multiserver') {
+    const savedMultiServer = localStorage.getItem(
+      'preferredMultiServer'
+    ) as MultiServerType;
+    if (
+      savedPlayer === 'vidking' ||
+      savedPlayer === 'videasy' ||
+      savedPlayer === 'vidlink' ||
+      savedPlayer === 'vidsrc' ||
+      savedPlayer === 'multiserver'
+    ) {
       setSelectedPlayer(savedPlayer);
     }
-    if (savedMultiServer === 'api1' || savedMultiServer === 'api2' || savedMultiServer === 'api3' || savedMultiServer === 'api4') {
+    if (
+      savedMultiServer === 'api1' ||
+      savedMultiServer === 'api2' ||
+      savedMultiServer === 'api3' ||
+      savedMultiServer === 'api4'
+    ) {
       setSelectedMultiServer(savedMultiServer);
     }
   }, []);
@@ -205,9 +211,19 @@ export default function WatchPage({
         const messageData = JSON.parse(event.data);
 
         // Handle Vidking Player events
-        if (isVidking && messageData.type === 'PLAYER_EVENT' && messageData.data) {
-          const { event: eventType, currentTime, duration, progress, season, episode } =
-            messageData.data;
+        if (
+          isVidking &&
+          messageData.type === 'PLAYER_EVENT' &&
+          messageData.data
+        ) {
+          const {
+            event: eventType,
+            currentTime,
+            duration,
+            progress,
+            season,
+            episode,
+          } = messageData.data;
 
           // Only save progress for significant events (not every timeupdate)
           const shouldSave =
@@ -217,7 +233,7 @@ export default function WatchPage({
             eventType === 'seeked' ||
             (eventType === 'timeupdate' && progress % 5 < 0.1); // Save every ~5% progress
 
-          if (shouldSave && user && content.title) {
+          if (shouldSave && user && (content.title || content.name)) {
             // Debounce progress saves
             if (progressSaveTimeoutRef.current) {
               clearTimeout(progressSaveTimeoutRef.current);
@@ -235,8 +251,22 @@ export default function WatchPage({
                     backdropPath: content.backdrop_path || null,
                     currentTime: Math.floor(currentTime),
                     duration: Math.floor(duration),
-                    seasonNumber: contentType === 'tv' ? (season || currentSeason) : undefined,
-                    episodeNumber: contentType === 'tv' ? (episode || currentEpisode) : undefined,
+                    seasonNumber:
+                      contentType === 'tv'
+                        ? (season ??
+                          (currentSeason !== null
+                            ? currentSeason
+                            : undefined) ??
+                          undefined)
+                        : undefined,
+                    episodeNumber:
+                      contentType === 'tv'
+                        ? (episode ??
+                          (currentEpisode !== null
+                            ? currentEpisode
+                            : undefined) ??
+                          undefined)
+                        : undefined,
                   },
                   {
                     invalidateCache: ['/api/v1/watch/history'],
@@ -252,8 +282,14 @@ export default function WatchPage({
                   backdropPath: content.backdrop_path || null,
                   currentTime: Math.floor(currentTime),
                   duration: Math.floor(duration),
-                  seasonNumber: contentType === 'tv' ? (season || currentSeason) : undefined,
-                  episodeNumber: contentType === 'tv' ? (episode || currentEpisode) : undefined,
+                  seasonNumber:
+                    contentType === 'tv'
+                      ? (season ?? currentSeason ?? undefined)
+                      : undefined,
+                  episodeNumber:
+                    contentType === 'tv'
+                      ? (episode ?? currentEpisode ?? undefined)
+                      : undefined,
                 });
               } catch (_error) {
                 // Silent fail - don't interrupt viewing experience
@@ -264,15 +300,26 @@ export default function WatchPage({
 
         // Handle VIDEASY Player events
         if (isVideasy && messageData.id) {
-          const { id: contentId, type, progress, timestamp, duration, season, episode } =
-            messageData as VideasyPlayerEvent;
+          const {
+            id: contentId,
+            progress,
+            timestamp,
+            duration,
+            season,
+            episode,
+          } = messageData as VideasyPlayerEvent;
 
           // Only save progress for significant updates (every ~5% or on pause/end)
           const shouldSave =
             progress % 5 < 0.1 || // Save every ~5% progress
             progress >= 90; // Save when near completion
 
-          if (shouldSave && user && content.title && parseInt(contentId) === parseInt(id)) {
+          if (
+            shouldSave &&
+            user &&
+            content.title &&
+            parseInt(contentId) === parseInt(id)
+          ) {
             // Debounce progress saves
             if (progressSaveTimeoutRef.current) {
               clearTimeout(progressSaveTimeoutRef.current);
@@ -290,8 +337,22 @@ export default function WatchPage({
                     backdropPath: content.backdrop_path || null,
                     currentTime: Math.floor(timestamp),
                     duration: Math.floor(duration),
-                    seasonNumber: contentType === 'tv' ? (season || currentSeason) : undefined,
-                    episodeNumber: contentType === 'tv' ? (episode || currentEpisode) : undefined,
+                    seasonNumber:
+                      contentType === 'tv'
+                        ? (season ??
+                          (currentSeason !== null
+                            ? currentSeason
+                            : undefined) ??
+                          undefined)
+                        : undefined,
+                    episodeNumber:
+                      contentType === 'tv'
+                        ? (episode ??
+                          (currentEpisode !== null
+                            ? currentEpisode
+                            : undefined) ??
+                          undefined)
+                        : undefined,
                   },
                   {
                     invalidateCache: ['/api/v1/watch/history'],
@@ -307,8 +368,14 @@ export default function WatchPage({
                   backdropPath: content.backdrop_path || null,
                   currentTime: Math.floor(timestamp),
                   duration: Math.floor(duration),
-                  seasonNumber: contentType === 'tv' ? (season || currentSeason) : undefined,
-                  episodeNumber: contentType === 'tv' ? (episode || currentEpisode) : undefined,
+                  seasonNumber:
+                    contentType === 'tv'
+                      ? (season ?? currentSeason ?? undefined)
+                      : undefined,
+                  episodeNumber:
+                    contentType === 'tv'
+                      ? (episode ?? currentEpisode ?? undefined)
+                      : undefined,
                 });
               } catch (_error) {
                 // Silent fail - don't interrupt viewing experience
@@ -325,8 +392,8 @@ export default function WatchPage({
             // VidLink stores data in localStorage automatically, but we can sync it to our backend
             const contentId = parseInt(id);
             const contentData = mediaData[contentId.toString()];
-            
-            if (contentData && user && content.title) {
+
+            if (contentData && user && (content.title || content.name)) {
               const progress = contentData.progress;
               if (progress && progress.watched > 0 && progress.duration > 0) {
                 // Debounce progress saves
@@ -336,11 +403,11 @@ export default function WatchPage({
 
                 progressSaveTimeoutRef.current = setTimeout(async () => {
                   try {
-                    const seasonNumber = contentData.last_season_watched 
-                      ? parseInt(contentData.last_season_watched) 
+                    const seasonNumber = contentData.last_season_watched
+                      ? parseInt(contentData.last_season_watched)
                       : undefined;
-                    const episodeNumber = contentData.last_episode_watched 
-                      ? parseInt(contentData.last_episode_watched) 
+                    const episodeNumber = contentData.last_episode_watched
+                      ? parseInt(contentData.last_episode_watched)
                       : undefined;
 
                     await cachedPost(
@@ -349,12 +416,24 @@ export default function WatchPage({
                         contentId,
                         contentType,
                         title: content.title || content.name,
-                        posterPath: contentData.poster_path || content.poster_path || null,
-                        backdropPath: contentData.backdrop_path || content.backdrop_path || null,
+                        posterPath:
+                          contentData.poster_path ||
+                          content.poster_path ||
+                          null,
+                        backdropPath:
+                          contentData.backdrop_path ||
+                          content.backdrop_path ||
+                          null,
                         currentTime: Math.floor(progress.watched),
                         duration: Math.floor(progress.duration),
-                        seasonNumber: contentType === 'tv' ? (seasonNumber || currentSeason) : undefined,
-                        episodeNumber: contentType === 'tv' ? (episodeNumber || currentEpisode) : undefined,
+                        seasonNumber:
+                          contentType === 'tv'
+                            ? seasonNumber || currentSeason
+                            : undefined,
+                        episodeNumber:
+                          contentType === 'tv'
+                            ? episodeNumber || currentEpisode
+                            : undefined,
                       },
                       {
                         invalidateCache: ['/api/v1/watch/history'],
@@ -366,12 +445,30 @@ export default function WatchPage({
                       contentId,
                       contentType,
                       title: content.title || content.name,
-                      posterPath: contentData.poster_path || content.poster_path || null,
-                      backdropPath: contentData.backdrop_path || content.backdrop_path || null,
+                      posterPath:
+                        contentData.poster_path || content.poster_path || null,
+                      backdropPath:
+                        contentData.backdrop_path ||
+                        content.backdrop_path ||
+                        null,
                       currentTime: Math.floor(progress.watched),
                       duration: Math.floor(progress.duration),
-                      seasonNumber: contentType === 'tv' ? (seasonNumber || currentSeason) : undefined,
-                      episodeNumber: contentType === 'tv' ? (episodeNumber || currentEpisode) : undefined,
+                      seasonNumber:
+                        contentType === 'tv'
+                          ? (seasonNumber ??
+                            (currentSeason !== null
+                              ? currentSeason
+                              : undefined) ??
+                            undefined)
+                          : undefined,
+                      episodeNumber:
+                        contentType === 'tv'
+                          ? (episodeNumber ??
+                            (currentEpisode !== null
+                              ? currentEpisode
+                              : undefined) ??
+                            undefined)
+                          : undefined,
                     });
                   } catch (_error) {
                     // Silent fail - don't interrupt viewing experience
@@ -383,8 +480,14 @@ export default function WatchPage({
 
           // Handle PLAYER_EVENT (real-time events)
           if (messageData.type === 'PLAYER_EVENT' && messageData.data) {
-            const { event: eventType, currentTime, duration, mtmdbId, season, episode } =
-              messageData.data as VidlinkPlayerEvent['data'];
+            const {
+              event: eventType,
+              currentTime,
+              duration,
+              mtmdbId,
+              season,
+              episode,
+            } = messageData.data as VidlinkPlayerEvent['data'];
 
             // Only save progress for significant events
             const shouldSave =
@@ -394,7 +497,12 @@ export default function WatchPage({
               eventType === 'seeked' ||
               (eventType === 'timeupdate' && currentTime % 30 < 1); // Save every ~30 seconds
 
-            if (shouldSave && user && content.title && mtmdbId === parseInt(id)) {
+            if (
+              shouldSave &&
+              user &&
+              content.title &&
+              mtmdbId === parseInt(id)
+            ) {
               // Debounce progress saves
               if (progressSaveTimeoutRef.current) {
                 clearTimeout(progressSaveTimeoutRef.current);
@@ -412,8 +520,14 @@ export default function WatchPage({
                       backdropPath: content.backdrop_path || null,
                       currentTime: Math.floor(currentTime),
                       duration: Math.floor(duration),
-                      seasonNumber: contentType === 'tv' ? (season || currentSeason) : undefined,
-                      episodeNumber: contentType === 'tv' ? (episode || currentEpisode) : undefined,
+                      seasonNumber:
+                        contentType === 'tv'
+                          ? season || currentSeason
+                          : undefined,
+                      episodeNumber:
+                        contentType === 'tv'
+                          ? episode || currentEpisode
+                          : undefined,
                     },
                     {
                       invalidateCache: ['/api/v1/watch/history'],
@@ -429,8 +543,22 @@ export default function WatchPage({
                     backdropPath: content.backdrop_path || null,
                     currentTime: Math.floor(currentTime),
                     duration: Math.floor(duration),
-                    seasonNumber: contentType === 'tv' ? (season || currentSeason) : undefined,
-                    episodeNumber: contentType === 'tv' ? (episode || currentEpisode) : undefined,
+                    seasonNumber:
+                      contentType === 'tv'
+                        ? (season ??
+                          (currentSeason !== null
+                            ? currentSeason
+                            : undefined) ??
+                          undefined)
+                        : undefined,
+                    episodeNumber:
+                      contentType === 'tv'
+                        ? (episode ??
+                          (currentEpisode !== null
+                            ? currentEpisode
+                            : undefined) ??
+                          undefined)
+                        : undefined,
                   });
                 } catch (_error) {
                   // Silent fail - don't interrupt viewing experience
@@ -452,11 +580,26 @@ export default function WatchPage({
         if (isVidsrcWtf) {
           // Handle MEDIA_DATA (progress storage)
           if (messageData.type === 'MEDIA_DATA' && messageData.data) {
-            const mediaData = messageData.data as Record<string, any>;
+            const mediaData = messageData.data as Record<
+              string,
+              {
+                id: number;
+                type: 'movie' | 'tv';
+                title: string;
+                poster_path?: string;
+                backdrop_path?: string;
+                progress?: {
+                  watched: number;
+                  duration: number;
+                };
+                last_season_watched?: string;
+                last_episode_watched?: string;
+              }
+            >;
             const contentId = parseInt(id);
             const contentData = mediaData[contentId.toString()];
-            
-            if (contentData && user && content.title) {
+
+            if (contentData && user && (content.title || content.name)) {
               const progress = contentData.progress;
               if (progress && progress.watched > 0 && progress.duration > 0) {
                 // Debounce progress saves
@@ -466,11 +609,11 @@ export default function WatchPage({
 
                 progressSaveTimeoutRef.current = setTimeout(async () => {
                   try {
-                    const seasonNumber = contentData.last_season_watched 
-                      ? parseInt(contentData.last_season_watched) 
+                    const seasonNumber = contentData.last_season_watched
+                      ? parseInt(contentData.last_season_watched)
                       : undefined;
-                    const episodeNumber = contentData.last_episode_watched 
-                      ? parseInt(contentData.last_episode_watched) 
+                    const episodeNumber = contentData.last_episode_watched
+                      ? parseInt(contentData.last_episode_watched)
                       : undefined;
 
                     await cachedPost(
@@ -479,12 +622,24 @@ export default function WatchPage({
                         contentId,
                         contentType,
                         title: content.title || content.name,
-                        posterPath: contentData.poster_path || content.poster_path || null,
-                        backdropPath: contentData.backdrop_path || content.backdrop_path || null,
+                        posterPath:
+                          contentData.poster_path ||
+                          content.poster_path ||
+                          null,
+                        backdropPath:
+                          contentData.backdrop_path ||
+                          content.backdrop_path ||
+                          null,
                         currentTime: Math.floor(progress.watched),
                         duration: Math.floor(progress.duration),
-                        seasonNumber: contentType === 'tv' ? (seasonNumber || currentSeason) : undefined,
-                        episodeNumber: contentType === 'tv' ? (episodeNumber || currentEpisode) : undefined,
+                        seasonNumber:
+                          contentType === 'tv'
+                            ? seasonNumber || currentSeason
+                            : undefined,
+                        episodeNumber:
+                          contentType === 'tv'
+                            ? episodeNumber || currentEpisode
+                            : undefined,
                       },
                       {
                         invalidateCache: ['/api/v1/watch/history'],
@@ -496,12 +651,30 @@ export default function WatchPage({
                       contentId,
                       contentType,
                       title: content.title || content.name,
-                      posterPath: contentData.poster_path || content.poster_path || null,
-                      backdropPath: contentData.backdrop_path || content.backdrop_path || null,
+                      posterPath:
+                        contentData.poster_path || content.poster_path || null,
+                      backdropPath:
+                        contentData.backdrop_path ||
+                        content.backdrop_path ||
+                        null,
                       currentTime: Math.floor(progress.watched),
                       duration: Math.floor(progress.duration),
-                      seasonNumber: contentType === 'tv' ? (seasonNumber || currentSeason) : undefined,
-                      episodeNumber: contentType === 'tv' ? (episodeNumber || currentEpisode) : undefined,
+                      seasonNumber:
+                        contentType === 'tv'
+                          ? (seasonNumber ??
+                            (currentSeason !== null
+                              ? currentSeason
+                              : undefined) ??
+                            undefined)
+                          : undefined,
+                      episodeNumber:
+                        contentType === 'tv'
+                          ? (episodeNumber ??
+                            (currentEpisode !== null
+                              ? currentEpisode
+                              : undefined) ??
+                            undefined)
+                          : undefined,
                     });
                   } catch (_error) {
                     // Silent fail - don't interrupt viewing experience
@@ -536,7 +709,7 @@ export default function WatchPage({
 
   // Load saved watch progress and set season/episode from URL or history
   useEffect(() => {
-    if (!id || !content.title) return;
+    if (!id || (!content.title && !content.name)) return;
 
     // Fetch watch history if not already loaded
     fetchWatchHistory();
@@ -566,6 +739,7 @@ export default function WatchPage({
     id,
     contentType,
     content.title,
+    content.name,
     searchParams,
     getHistoryItem,
     fetchWatchHistory,
@@ -622,6 +796,15 @@ export default function WatchPage({
           }
         );
         setContent(res.content);
+
+        // Extract seasons from TV show data
+        if (contentType === 'tv' && res.content.seasons) {
+          // Filter out specials (season 0) and sort by season number
+          const validSeasons = res.content.seasons
+            .filter((s) => s.season_number > 0)
+            .sort((a, b) => a.season_number - b.season_number);
+          setSeasons(validSeasons);
+        }
       } catch (_error) {
         setContent({} as Movie);
       } finally {
@@ -644,9 +827,53 @@ export default function WatchPage({
     getCredits();
   }, [detailsCacheKey, creditsCacheKey, contentType, id]);
 
+  // Scroll to current episode when it changes
+  useEffect(() => {
+    if (currentEpisode && episodeScrollRef.current) {
+      setTimeout(() => {
+        const episodeElement = episodeScrollRef.current?.querySelector(
+          `[data-episode="${currentEpisode}"]`
+        );
+        if (episodeElement) {
+          episodeElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'center',
+          });
+        }
+      }, 300);
+    }
+  }, [currentEpisode, currentSeasonData]);
+
+  // Fetch season details when season changes (for TV shows)
+  useEffect(() => {
+    if (contentType !== 'tv' || !id || !currentSeason) return;
+
+    const fetchSeasonDetails = async () => {
+      try {
+        const res = await cachedGet<{ content: Season }>(
+          `/api/v1/tv/${id}/season/${currentSeason}`,
+          {
+            ttl: 60 * 60 * 1000, // 1 hour cache
+          }
+        );
+        setCurrentSeasonData(res.content);
+      } catch (_error) {
+        // Silent fail - fallback to basic season info
+        const season = seasons.find((s) => s.season_number === currentSeason);
+        if (season) {
+          setCurrentSeasonData(season);
+        }
+      }
+    };
+
+    fetchSeasonDetails();
+  }, [id, contentType, currentSeason, seasons]);
+
   // Build player embed URL based on selected player
   useEffect(() => {
-    if (!id || !content.title) return;
+    // Fix: Check for both title (movies) and name (TV shows)
+    if (!id || (!content.title && !content.name)) return;
 
     // Determine season/episode for TV shows
     let season = currentSeason;
@@ -657,7 +884,7 @@ export default function WatchPage({
         // Try to get from URL params first
         const seasonParam = searchParams?.get('season');
         const episodeParam = searchParams?.get('episode');
-        
+
         if (seasonParam && episodeParam) {
           season = parseInt(seasonParam);
           episode = parseInt(episodeParam);
@@ -684,8 +911,12 @@ export default function WatchPage({
     const historyItem = getHistoryItem(
       parseInt(id),
       contentType,
-      contentType === 'tv' ? season : undefined,
-      contentType === 'tv' ? episode : undefined
+      contentType === 'tv'
+        ? (season ?? (currentSeason !== null ? currentSeason : undefined))
+        : undefined,
+      contentType === 'tv'
+        ? (episode ?? (currentEpisode !== null ? currentEpisode : undefined))
+        : undefined
     );
 
     let playerUrl = '';
@@ -709,11 +940,19 @@ export default function WatchPage({
       }
 
       // Add saved progress if available
-      if (historyItem && historyItem.currentTime > 0 && historyItem.duration > 0) {
+      if (
+        historyItem &&
+        historyItem.currentTime > 0 &&
+        historyItem.duration > 0
+      ) {
         // Only resume if not completed (less than 90%)
-        const progressPercent = (historyItem.currentTime / historyItem.duration) * 100;
+        const progressPercent =
+          (historyItem.currentTime / historyItem.duration) * 100;
         if (progressPercent < 90) {
-          params.append('progress', Math.floor(historyItem.currentTime).toString());
+          params.append(
+            'progress',
+            Math.floor(historyItem.currentTime).toString()
+          );
         }
       }
     } else if (selectedPlayer === 'videasy') {
@@ -731,11 +970,19 @@ export default function WatchPage({
       }
 
       // Add saved progress if available
-      if (historyItem && historyItem.currentTime > 0 && historyItem.duration > 0) {
+      if (
+        historyItem &&
+        historyItem.currentTime > 0 &&
+        historyItem.duration > 0
+      ) {
         // Only resume if not completed (less than 90%)
-        const progressPercent = (historyItem.currentTime / historyItem.duration) * 100;
+        const progressPercent =
+          (historyItem.currentTime / historyItem.duration) * 100;
         if (progressPercent < 90) {
-          params.append('progress', Math.floor(historyItem.currentTime).toString());
+          params.append(
+            'progress',
+            Math.floor(historyItem.currentTime).toString()
+          );
         }
       }
     } else if (selectedPlayer === 'vidlink') {
@@ -759,11 +1006,19 @@ export default function WatchPage({
       params.append('autoplay', 'false');
 
       // Add saved progress if available (VidLink uses startAt parameter)
-      if (historyItem && historyItem.currentTime > 0 && historyItem.duration > 0) {
+      if (
+        historyItem &&
+        historyItem.currentTime > 0 &&
+        historyItem.duration > 0
+      ) {
         // Only resume if not completed (less than 90%)
-        const progressPercent = (historyItem.currentTime / historyItem.duration) * 100;
+        const progressPercent =
+          (historyItem.currentTime / historyItem.duration) * 100;
         if (progressPercent < 90) {
-          params.append('startAt', Math.floor(historyItem.currentTime).toString());
+          params.append(
+            'startAt',
+            Math.floor(historyItem.currentTime).toString()
+          );
         }
       }
     } else if (selectedPlayer === 'vidsrc') {
@@ -785,12 +1040,19 @@ export default function WatchPage({
       // Progress tracking would need to be handled manually if needed
     } else if (selectedPlayer === 'multiserver') {
       // Build Vidsrc.wtf Multi Server Player URL
-      const apiVersion = selectedMultiServer === 'api1' ? '1' : selectedMultiServer === 'api2' ? '2' : selectedMultiServer === 'api3' ? '3' : '4';
-      
+      const apiVersion =
+        selectedMultiServer === 'api1'
+          ? '1'
+          : selectedMultiServer === 'api2'
+            ? '2'
+            : selectedMultiServer === 'api3'
+              ? '3'
+              : '4';
+
       if (contentType === 'movie') {
         playerUrl = `https://vidsrc.wtf/api/${apiVersion}/movie/`;
         params.append('id', id);
-        
+
         // API 1 and 2 support color parameter
         if (apiVersion === '1' || apiVersion === '2') {
           params.append('color', 'e50914'); // Netflix red
@@ -799,20 +1061,20 @@ export default function WatchPage({
         // TV show
         playerUrl = `https://vidsrc.wtf/api/${apiVersion}/tv/`;
         params.append('id', id);
-        
+
         if (season) {
           params.append('s', season.toString());
         }
         if (episode) {
           params.append('e', episode.toString());
         }
-        
+
         // API 1 and 2 support color parameter
         if (apiVersion === '1' || apiVersion === '2') {
           params.append('color', 'e50914'); // Netflix red
         }
       }
-      
+
       // Note: Vidsrc.wtf doesn't appear to support progress resume parameters
       // Progress tracking is handled via postMessage MEDIA_DATA events
     }
@@ -827,6 +1089,7 @@ export default function WatchPage({
     id,
     contentType,
     content.title,
+    content.name,
     currentSeason,
     currentEpisode,
     searchParams,
@@ -835,6 +1098,47 @@ export default function WatchPage({
     getHistoryItem,
     fetchWatchHistory,
   ]);
+
+  const handleSeasonChange = useCallback(
+    (season: number) => {
+      setCurrentSeason(season);
+      setCurrentEpisode(1); // Reset to first episode when season changes
+      // Update URL without page reload
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.set('season', season.toString());
+      newUrl.searchParams.set('episode', '1');
+      router.replace(newUrl.pathname + newUrl.search);
+    },
+    [router]
+  );
+
+  const handleEpisodeChange = useCallback(
+    (episode: number) => {
+      setCurrentEpisode(episode);
+      // Update URL without page reload
+      const newUrl = new URL(window.location.href);
+      if (currentSeason) {
+        newUrl.searchParams.set('season', currentSeason.toString());
+      }
+      newUrl.searchParams.set('episode', episode.toString());
+      router.replace(newUrl.pathname + newUrl.search);
+
+      // Scroll to video player with offset for navbar
+      setTimeout(() => {
+        if (videoPlayerRef.current) {
+          const elementPosition =
+            videoPlayerRef.current.getBoundingClientRect().top;
+          const offsetPosition = elementPosition + window.pageYOffset - 80; // 80px offset for navbar
+
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth',
+          });
+        }
+      }, 100);
+    },
+    [router, currentSeason]
+  );
 
   const handleNext = () => {
     if (currentTrailerIdx < trailers.length - 1)
@@ -898,18 +1202,19 @@ export default function WatchPage({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           className="w-full flex justify-center mb-8"
+          ref={videoPlayerRef}
         >
           {/* Responsive Container - Ensures player controls are fully visible */}
           <div className="relative w-full max-w-5xl">
             {embedUrl ? (
               <div className="relative w-full rounded-lg overflow-hidden border-2 border-gray-800 shadow-xl bg-black">
                 {/* Container with extra height to accommodate player controls */}
-                <div 
+                <div
                   className="relative w-full"
-                  style={{ 
+                  style={{
                     paddingBottom: 'calc(56.25% + 100px)',
                     height: 0,
-                    minHeight: '700px'
+                    minHeight: '700px',
                   }}
                 >
                   <iframe
@@ -918,25 +1223,29 @@ export default function WatchPage({
                     frameBorder="0"
                     allowFullScreen
                     allow="encrypted-media"
-                    className="absolute top-0 left-0 w-full h-full"
+                    className="absolute top-0 left-0 w-full h-full md:min-h-[700px] min-h-[400px]"
                     title={`${
-                  selectedPlayer === 'vidking' 
-                    ? 'Vidking' 
-                    : selectedPlayer === 'videasy' 
-                    ? 'VIDEASY' 
-                    : selectedPlayer === 'vidlink'
-                    ? 'VidLink'
-                    : selectedPlayer === 'vidsrc'
-                    ? 'Vidsrc'
-                    : 'Multi Server'
-                } Player`}
+                      selectedPlayer === 'vidking'
+                        ? 'Vidking'
+                        : selectedPlayer === 'videasy'
+                          ? 'VIDEASY'
+                          : selectedPlayer === 'vidlink'
+                            ? 'VidLink'
+                            : selectedPlayer === 'vidsrc'
+                              ? 'Vidsrc'
+                              : 'Multi Server'
+                    } Player`}
                   ></iframe>
                 </div>
               </div>
             ) : (
-              <div 
+              <div
                 className="relative w-full rounded-lg overflow-hidden border-2 border-gray-800"
-                style={{ paddingBottom: '56.25%', height: 0, minHeight: '600px' }}
+                style={{
+                  paddingBottom: '56.25%',
+                  height: 0,
+                  minHeight: '600px',
+                }}
               >
                 <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-gray-900">
                   <p className="text-gray-400">Loading video player...</p>
@@ -1083,6 +1392,199 @@ export default function WatchPage({
           )}
         </motion.div>
 
+        {/* Season and Episode Selectors for TV Shows */}
+        {contentType === 'tv' && seasons.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+            className="mt-8 w-full"
+          >
+            {/* Season Selector */}
+            <div className="mb-6">
+              <h3 className="text-xl font-semibold mb-4 px-4 md:px-0">
+                {content.name || content.title}
+              </h3>
+              <div className="flex items-center gap-3 px-4 md:px-0">
+                <span className="text-gray-400 text-sm font-medium whitespace-nowrap">
+                  Season:
+                </span>
+                <div className="flex gap-2 flex-wrap">
+                  {seasons.map((season) => (
+                    <motion.button
+                      key={season.season_number}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => handleSeasonChange(season.season_number)}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                        currentSeason === season.season_number
+                          ? 'bg-red-600 text-white shadow-lg'
+                          : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                      }`}
+                    >
+                      {season.name || `Season ${season.season_number}`}
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Netflix-style Episode Selector */}
+            {currentSeasonData &&
+              currentSeasonData.episodes &&
+              currentSeasonData.episodes.length > 0 && (
+                <div className="mt-6">
+                  <h4 className="text-lg font-semibold mb-4 px-4 md:px-0">
+                    Episodes
+                  </h4>
+                  <div className="relative">
+                    <div
+                      ref={episodeScrollRef}
+                      className="flex gap-4 overflow-x-auto scrollbar-hide pb-4 px-4 md:px-0 -mx-4 md:mx-0 snap-x snap-mandatory scroll-smooth"
+                    >
+                      {currentSeasonData.episodes.map((episode, index) => {
+                        const historyItem = getHistoryItem(
+                          parseInt(id),
+                          contentType,
+                          currentSeason || undefined,
+                          episode.episode_number
+                        );
+                        const hasProgress =
+                          historyItem && historyItem.currentTime > 0;
+                        const progressPercent =
+                          historyItem && historyItem.duration > 0
+                            ? (historyItem.currentTime / historyItem.duration) *
+                              100
+                            : 0;
+                        const isSelected =
+                          currentEpisode === episode.episode_number;
+                        const episodeStill = episode.still_path
+                          ? `${SMALL_IMG_BASE_URL}${episode.still_path}`
+                          : content.backdrop_path
+                            ? `${SMALL_IMG_BASE_URL}${content.backdrop_path}`
+                            : null;
+
+                        return (
+                          <motion.div
+                            key={episode.episode_number}
+                            data-episode={episode.episode_number}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            className={`min-w-[280px] md:min-w-[320px] flex-shrink-0 snap-start group cursor-pointer transition-all ${
+                              isSelected
+                                ? 'ring-2 ring-red-600 rounded-lg scale-105'
+                                : 'hover:scale-105'
+                            }`}
+                            onClick={() =>
+                              handleEpisodeChange(episode.episode_number)
+                            }
+                          >
+                            <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-900">
+                              {episodeStill ? (
+                                <motion.img
+                                  src={episodeStill}
+                                  alt={episode.name}
+                                  className="w-full h-full object-cover"
+                                  whileHover={{ scale: 1.05 }}
+                                  transition={{ duration: 0.3 }}
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+                                  <span className="text-gray-500 text-sm">
+                                    No Image
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Play Overlay */}
+                              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/40">
+                                <motion.div
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  className="bg-white/90 rounded-full p-3"
+                                >
+                                  <svg
+                                    className="w-8 h-8 text-black"
+                                    fill="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path d="M8 5v14l11-7z" />
+                                  </svg>
+                                </motion.div>
+                              </div>
+
+                              {/* Progress Bar */}
+                              {hasProgress && progressPercent > 5 && (
+                                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-900/50">
+                                  <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${progressPercent}%` }}
+                                    transition={{ duration: 0.5 }}
+                                    className="h-full bg-red-600"
+                                  />
+                                </div>
+                              )}
+
+                              {/* Episode Number Badge */}
+                              <div className="absolute top-2 left-2 bg-black/70 px-2 py-1 rounded text-xs font-semibold">
+                                {episode.episode_number}
+                              </div>
+
+                              {/* Duration Badge */}
+                              {episode.runtime && (
+                                <div className="absolute top-2 right-2 bg-black/70 px-2 py-1 rounded text-xs">
+                                  {Math.floor(episode.runtime / 60)}h{' '}
+                                  {episode.runtime % 60}m
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Episode Info */}
+                            <div className="mt-3 px-1">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <h5 className="text-white font-semibold text-sm md:text-base truncate">
+                                    {episode.episode_number}. {episode.name}
+                                  </h5>
+                                  {episode.overview && (
+                                    <p className="text-gray-400 text-xs md:text-sm mt-1 line-clamp-2">
+                                      {episode.overview}
+                                    </p>
+                                  )}
+                                  {episode.air_date && (
+                                    <p className="text-gray-500 text-xs mt-1">
+                                      {new Date(
+                                        episode.air_date
+                                      ).toLocaleDateString('en-US', {
+                                        year: 'numeric',
+                                        month: 'short',
+                                        day: 'numeric',
+                                      })}
+                                    </p>
+                                  )}
+                                </div>
+                                {isSelected && (
+                                  <motion.div
+                                    initial={{ scale: 0 }}
+                                    animate={{ scale: 1 }}
+                                    className="flex-shrink-0"
+                                  >
+                                    <div className="w-2 h-2 bg-red-600 rounded-full" />
+                                  </motion.div>
+                                )}
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+          </motion.div>
+        )}
+
         {trailers.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -1151,9 +1653,17 @@ export default function WatchPage({
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.4 }}
-              className="text-4xl md:text-5xl font-bold mb-4"
+              className="text-4xl md:text-5xl font-bold mb-4 flex items-center gap-4"
             >
               {content?.title || content?.name}
+              <FavoriteButton
+                contentId={parseInt(id)}
+                contentType={contentType}
+                title={content?.title || content?.name || ''}
+                posterPath={content?.poster_path}
+                backdropPath={content?.backdrop_path}
+                size="lg"
+              />
             </motion.h2>
 
             {/* Ratings and Meta Info */}

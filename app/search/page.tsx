@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useContentStore } from '@/store/content';
 import Navbar from '@/components/Navbar';
@@ -10,14 +10,23 @@ import toast from 'react-hot-toast';
 import { cachedGet } from '@/lib/apiClient';
 import { ORIGINAL_IMG_BASE_URL, SMALL_IMG_BASE_URL } from '@/utils/constants';
 import Link from 'next/link';
+import FilterSidebar from '@/components/search/FilterSidebar';
+import SearchEmpty from '@/components/EmptyStates/SearchEmpty';
 import type { SearchResult } from '@/types';
 
-const SearchPage = () => {
+const SearchPageContent = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filters, setFilters] = useState({
+    genres: [] as number[],
+    yearRange: [1900, new Date().getFullYear()] as [number, number],
+    rating: 0,
+    sortBy: 'popularity',
+  });
   const { setContentType } = useContentStore();
 
   const performSearch = async (term: string) => {
@@ -55,13 +64,12 @@ const SearchPage = () => {
       setSearchTerm('');
       setResults([]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchTerm.trim()) return;
-    
+
     // Update URL with search query - the effect will handle the search
     router.push(`/search?q=${encodeURIComponent(searchTerm.trim())}`);
   };
@@ -71,6 +79,56 @@ const SearchPage = () => {
     setResults([]);
     router.push('/search');
   };
+
+  const filteredResults = useMemo(() => {
+    let filtered = [...results];
+
+    // Filter by year
+    filtered = filtered.filter((item) => {
+      const year = item.release_date
+        ? new Date(item.release_date).getFullYear()
+        : item.first_air_date
+          ? new Date(item.first_air_date).getFullYear()
+          : null;
+      if (!year) return true;
+      return year >= filters.yearRange[0] && year <= filters.yearRange[1];
+    });
+
+    // Sort
+    filtered.sort((a, b) => {
+      switch (filters.sortBy) {
+        case 'popularity': {
+          // For popularity, sort by release date (newer first) as a proxy
+          const dateA = a.release_date || a.first_air_date || '';
+          const dateB = b.release_date || b.first_air_date || '';
+          return dateB.localeCompare(dateA);
+        }
+        case 'rating': {
+          // Rating sorting not available for SearchResult, fallback to title
+          return (a.title || a.name || '').localeCompare(
+            b.title || b.name || ''
+          );
+        }
+        case 'release_date': {
+          const dateA = new Date(
+            a.release_date || a.first_air_date || 0
+          ).getTime();
+          const dateB = new Date(
+            b.release_date || b.first_air_date || 0
+          ).getTime();
+          return dateB - dateA;
+        }
+        case 'title':
+          return (a.title || a.name || '').localeCompare(
+            b.title || b.name || ''
+          );
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  }, [results, filters]);
 
   return (
     <div className="bg-black min-h-screen text-white pt-20">
@@ -148,7 +206,7 @@ const SearchPage = () => {
               exit={{ opacity: 0 }}
               className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
             >
-              {results.map((result, index) => {
+              {filteredResults.map((result, index) => {
                 const mediaType = result.media_type || 'movie';
                 const profilePath = result.profile_path;
                 const posterPath = result.poster_path;
@@ -239,22 +297,38 @@ const SearchPage = () => {
               })}
             </motion.div>
           ) : searchTerm ? (
-            <motion.div
-              key="no-results"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="text-center py-20"
-            >
-              <p className="text-2xl text-gray-400 mb-2">No results found</p>
-              <p className="text-gray-500">Try a different search term</p>
-            </motion.div>
+            <SearchEmpty query={searchTerm} />
           ) : null}
         </AnimatePresence>
+
+        <FilterSidebar
+          filters={filters}
+          onFiltersChange={setFilters}
+          isOpen={isFilterOpen}
+          onClose={() => setIsFilterOpen(false)}
+        />
       </div>
     </div>
   );
 };
 
-export default SearchPage;
+const SearchPage = () => {
+  return (
+    <Suspense
+      fallback={
+        <div className="bg-black min-h-screen text-white pt-20">
+          <Navbar />
+          <div className="container mx-auto px-4 py-8">
+            <div className="flex justify-center items-center py-20">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <SearchPageContent />
+    </Suspense>
+  );
+};
 
+export default SearchPage;

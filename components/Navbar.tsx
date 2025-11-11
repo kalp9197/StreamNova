@@ -55,6 +55,12 @@ const Navbar = () => {
             >
               Search History
             </Link>
+            <Link
+              href="/favorites"
+              className="text-gray-300 hover:text-white transition-colors font-medium"
+            >
+              Favorites
+            </Link>
           </div>
         </div>
 
@@ -66,21 +72,25 @@ const Navbar = () => {
           {user && (
             <>
               {user.image ? (
-                <motion.img
-                  whileHover={{ scale: 1.1 }}
-                  src={user.image}
-                  alt="User avatar"
-                  className="h-10 w-10 rounded-full cursor-pointer border-2 border-gray-700 hover:border-red-600 transition-colors"
-                />
+                <Link href="/profile">
+                  <motion.img
+                    whileHover={{ scale: 1.1 }}
+                    src={user.image}
+                    alt="User avatar"
+                    className="h-10 w-10 rounded-full cursor-pointer border-2 border-gray-700 hover:border-red-600 transition-colors"
+                  />
+                </Link>
               ) : (
-                <motion.div
-                  whileHover={{ scale: 1.1 }}
-                  className="h-10 w-10 rounded-full bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center cursor-pointer border-2 border-gray-700 hover:border-red-600 transition-colors"
-                >
-                  <span className="text-sm font-bold text-white">
-                    {user.username?.[0]?.toUpperCase() || 'U'}
-                  </span>
-                </motion.div>
+                <Link href="/profile">
+                  <motion.div
+                    whileHover={{ scale: 1.1 }}
+                    className="h-10 w-10 rounded-full bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center cursor-pointer border-2 border-gray-700 hover:border-red-600 transition-colors"
+                  >
+                    <span className="text-sm font-bold text-white">
+                      {user.username?.[0]?.toUpperCase() || 'U'}
+                    </span>
+                  </motion.div>
+                </Link>
               )}
               <motion.button
                 whileHover={{ scale: 1.1 }}
@@ -140,6 +150,13 @@ const Navbar = () => {
                 onClick={toggleMobileMenu}
               >
                 Search History
+              </Link>
+              <Link
+                href="/favorites"
+                className="block py-2 text-gray-300 hover:text-white transition-colors"
+                onClick={toggleMobileMenu}
+              >
+                Favorites
               </Link>
             </div>
           </motion.div>

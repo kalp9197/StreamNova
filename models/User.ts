@@ -21,6 +21,15 @@ export interface IWatchHistoryItem {
   episodeNumber?: number; // for TV shows
 }
 
+export interface IFavoriteItem {
+  contentId: number;
+  contentType: 'movie' | 'tv';
+  title: string;
+  posterPath?: string | null;
+  backdropPath?: string | null;
+  addedAt: Date;
+}
+
 export interface IUser extends Document {
   username: string;
   email: string;
@@ -28,6 +37,7 @@ export interface IUser extends Document {
   image: string;
   searchHistory: ISearchHistoryItem[];
   watchHistory: IWatchHistoryItem[];
+  favorites: IFavoriteItem[];
 }
 
 const searchHistorySchema = new Schema(
@@ -57,6 +67,18 @@ const watchHistorySchema = new Schema(
   { _id: false }
 );
 
+const favoriteSchema = new Schema(
+  {
+    contentId: { type: Number, required: true },
+    contentType: { type: String, enum: ['movie', 'tv'], required: true },
+    title: { type: String, required: true },
+    posterPath: String,
+    backdropPath: String,
+    addedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
 const userSchema = new Schema<IUser>({
   username: {
     type: String,
@@ -82,6 +104,10 @@ const userSchema = new Schema<IUser>({
   },
   watchHistory: {
     type: [watchHistorySchema],
+    default: [],
+  },
+  favorites: {
+    type: [favoriteSchema],
     default: [],
   },
 });
