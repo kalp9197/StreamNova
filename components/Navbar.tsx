@@ -23,12 +23,12 @@ const Navbar = () => {
       transition={{ duration: 0.5 }}
       className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md border-b border-gray-800"
     >
-      <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between p-4 h-20">
-        <div className="flex items-center gap-8">
+      <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between p-3 sm:p-4 h-16 sm:h-20">
+        <div className="flex items-center gap-4 sm:gap-8">
           <Link href="/">
             <motion.h1
               whileHover={{ scale: 1.05 }}
-              className="text-3xl font-bold bg-gradient-to-r from-red-600 to-red-800 bg-clip-text text-transparent cursor-pointer"
+              className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-red-600 to-red-800 bg-clip-text text-transparent cursor-pointer"
             >
               StreamNova
             </motion.h1>
@@ -64,8 +64,8 @@ const Navbar = () => {
           </div>
         </div>
 
-        <div className="flex gap-4 items-center">
-          <div className="hidden md:block">
+        <div className="flex gap-2 sm:gap-4 items-center">
+          <div className="hidden sm:block">
             <EnhancedSearchBar />
           </div>
 
@@ -77,16 +77,16 @@ const Navbar = () => {
                     whileHover={{ scale: 1.1 }}
                     src={user.image}
                     alt="User avatar"
-                    className="h-10 w-10 rounded-full cursor-pointer border-2 border-gray-700 hover:border-red-600 transition-colors"
+                    className="h-8 w-8 sm:h-10 sm:w-10 rounded-full cursor-pointer border-2 border-gray-700 hover:border-red-600 transition-colors"
                   />
                 </Link>
               ) : (
                 <Link href="/profile">
                   <motion.div
                     whileHover={{ scale: 1.1 }}
-                    className="h-10 w-10 rounded-full bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center cursor-pointer border-2 border-gray-700 hover:border-red-600 transition-colors"
+                    className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center cursor-pointer border-2 border-gray-700 hover:border-red-600 transition-colors"
                   >
-                    <span className="text-sm font-bold text-white">
+                    <span className="text-xs sm:text-sm font-bold text-white">
                       {user.username?.[0]?.toUpperCase() || 'U'}
                     </span>
                   </motion.div>
@@ -99,7 +99,7 @@ const Navbar = () => {
                 className="text-gray-300 hover:text-red-600 transition-colors"
                 aria-label="Logout"
               >
-                <LogOut className="size-6" />
+                <LogOut className="size-5 sm:size-6" />
               </motion.button>
             </>
           )}
@@ -108,7 +108,7 @@ const Navbar = () => {
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={toggleMobileMenu}
-              className="text-gray-300 hover:text-white transition-colors"
+              className="text-gray-300 hover:text-white transition-colors p-1"
               aria-label="Menu"
             >
               <Menu className="size-6" />

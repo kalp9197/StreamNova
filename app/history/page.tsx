@@ -164,9 +164,9 @@ const SearchHistoryPage = () => {
     <div className="bg-black text-white min-h-screen pt-20">
       <Navbar />
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
-          <h1 className="text-3xl font-bold">Search History</h1>
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 py-6 sm:py-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 sm:mb-8 gap-3 sm:gap-4">
+          <h1 className="text-2xl sm:text-3xl font-bold">Search History</h1>
 
           <div className="flex gap-2 flex-wrap">
             {/* Filter */}
@@ -174,7 +174,7 @@ const SearchHistoryPage = () => {
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value as FilterType)}
-                className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-red-600 focus:ring-2 focus:ring-red-600/20"
+                className="bg-gray-800 border border-gray-700 rounded-lg px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base text-white focus:outline-none focus:border-red-600 focus:ring-2 focus:ring-red-600/20"
               >
                 <option value="all">All Types</option>
                 <option value="movie">Movies</option>
@@ -188,7 +188,7 @@ const SearchHistoryPage = () => {
               <select
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value as SortOption)}
-                className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-red-600 focus:ring-2 focus:ring-red-600/20"
+                className="bg-gray-800 border border-gray-700 rounded-lg px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base text-white focus:outline-none focus:border-red-600 focus:ring-2 focus:ring-red-600/20"
               >
                 <option value="date-desc">Newest First</option>
                 <option value="date-asc">Oldest First</option>
@@ -205,7 +205,7 @@ const SearchHistoryPage = () => {
                 setIsBulkMode(!isBulkMode);
                 setSelectedItems(new Set());
               }}
-              className={`px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2 ${
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm sm:text-base font-semibold transition-colors flex items-center gap-2 ${
                 isBulkMode
                   ? 'bg-red-600 hover:bg-red-700'
                   : 'bg-gray-800 hover:bg-gray-700 border border-gray-700'
@@ -257,7 +257,7 @@ const SearchHistoryPage = () => {
           </motion.div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <AnimatePresence mode="wait">
             {filteredAndSortedHistory.map((entry) => {
               const imageSrc = entry.image

@@ -1196,7 +1196,7 @@ export default function WatchPage({
   return (
     <div className="bg-black min-h-screen text-white pt-20">
       <Navbar />
-      <div className="mx-auto container px-4 md:px-6 lg:px-8 py-8 max-w-7xl">
+      <div className="mx-auto container px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8 max-w-7xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1214,7 +1214,7 @@ export default function WatchPage({
                   style={{
                     paddingBottom: 'calc(56.25% + 100px)',
                     height: 0,
-                    minHeight: '700px',
+                    minHeight: '400px',
                   }}
                 >
                   <iframe
@@ -1223,7 +1223,7 @@ export default function WatchPage({
                     frameBorder="0"
                     allowFullScreen
                     allow="encrypted-media"
-                    className="absolute top-0 left-0 w-full h-full md:min-h-[700px] min-h-[400px]"
+                    className="absolute top-0 left-0 w-full h-full min-h-[400px] sm:min-h-[500px] md:min-h-[600px] lg:min-h-[700px]"
                     title={`${
                       selectedPlayer === 'vidking'
                         ? 'Vidking'
@@ -1260,16 +1260,18 @@ export default function WatchPage({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.1 }}
-          className="flex flex-col items-center gap-4 mt-4"
+          className="flex flex-col items-center gap-3 sm:gap-4 mt-4"
         >
-          <div className="flex justify-center items-center gap-4 flex-wrap">
-            <span className="text-gray-400 text-sm font-medium">Player:</span>
-            <div className="flex gap-2 bg-gray-900 rounded-lg p-1 border border-gray-800 flex-wrap justify-center">
+          <div className="flex justify-center items-center gap-2 sm:gap-4 flex-wrap px-2">
+            <span className="text-gray-400 text-xs sm:text-sm font-medium">
+              Player:
+            </span>
+            <div className="flex gap-1.5 sm:gap-2 bg-gray-900 rounded-lg p-1 border border-gray-800 flex-wrap justify-center">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => handlePlayerChange('vidking')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${
                   selectedPlayer === 'vidking'
                     ? 'bg-red-600 text-white shadow-lg'
                     : 'text-gray-400 hover:text-white hover:bg-gray-800'
@@ -1281,7 +1283,7 @@ export default function WatchPage({
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => handlePlayerChange('videasy')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${
                   selectedPlayer === 'videasy'
                     ? 'bg-red-600 text-white shadow-lg'
                     : 'text-gray-400 hover:text-white hover:bg-gray-800'
@@ -1293,7 +1295,7 @@ export default function WatchPage({
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => handlePlayerChange('vidlink')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${
                   selectedPlayer === 'vidlink'
                     ? 'bg-red-600 text-white shadow-lg'
                     : 'text-gray-400 hover:text-white hover:bg-gray-800'
@@ -1305,7 +1307,7 @@ export default function WatchPage({
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => handlePlayerChange('vidsrc')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${
                   selectedPlayer === 'vidsrc'
                     ? 'bg-red-600 text-white shadow-lg'
                     : 'text-gray-400 hover:text-white hover:bg-gray-800'
@@ -1317,7 +1319,7 @@ export default function WatchPage({
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => handlePlayerChange('multiserver')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${
                   selectedPlayer === 'multiserver'
                     ? 'bg-red-600 text-white shadow-lg'
                     : 'text-gray-400 hover:text-white hover:bg-gray-800'
@@ -1401,12 +1403,12 @@ export default function WatchPage({
             className="mt-8 w-full"
           >
             {/* Season Selector */}
-            <div className="mb-6">
-              <h3 className="text-xl font-semibold mb-4 px-4 md:px-0">
+            <div className="mb-4 sm:mb-6">
+              <h3 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 px-2 sm:px-4 md:px-0">
                 {content.name || content.title}
               </h3>
-              <div className="flex items-center gap-3 px-4 md:px-0">
-                <span className="text-gray-400 text-sm font-medium whitespace-nowrap">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-2 sm:px-4 md:px-0">
+                <span className="text-gray-400 text-xs sm:text-sm font-medium whitespace-nowrap">
                   Season:
                 </span>
                 <div className="flex gap-2 flex-wrap">
@@ -1416,7 +1418,7 @@ export default function WatchPage({
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => handleSeasonChange(season.season_number)}
-                      className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                      className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${
                         currentSeason === season.season_number
                           ? 'bg-red-600 text-white shadow-lg'
                           : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
@@ -1434,13 +1436,13 @@ export default function WatchPage({
               currentSeasonData.episodes &&
               currentSeasonData.episodes.length > 0 && (
                 <div className="mt-6">
-                  <h4 className="text-lg font-semibold mb-4 px-4 md:px-0">
+                  <h4 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 px-2 sm:px-4 md:px-0">
                     Episodes
                   </h4>
                   <div className="relative">
                     <div
                       ref={episodeScrollRef}
-                      className="flex gap-4 overflow-x-auto scrollbar-hide pb-4 px-4 md:px-0 -mx-4 md:mx-0 snap-x snap-mandatory scroll-smooth"
+                      className="flex gap-3 sm:gap-4 overflow-x-auto scrollbar-hide pb-4 px-2 sm:px-4 md:px-0 -mx-2 sm:-mx-4 md:mx-0 snap-x snap-mandatory scroll-smooth"
                     >
                       {currentSeasonData.episodes.map((episode, index) => {
                         const historyItem = getHistoryItem(
@@ -1471,7 +1473,7 @@ export default function WatchPage({
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: index * 0.05 }}
-                            className={`min-w-[280px] md:min-w-[320px] flex-shrink-0 snap-start group cursor-pointer transition-all ${
+                            className={`min-w-[240px] sm:min-w-[280px] md:min-w-[300px] lg:min-w-[320px] flex-shrink-0 snap-start group cursor-pointer transition-all ${
                               isSelected
                                 ? 'ring-2 ring-red-600 rounded-lg scale-105'
                                 : 'hover:scale-105'
@@ -1646,14 +1648,14 @@ export default function WatchPage({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
-          className="flex flex-col md:flex-row items-start justify-between gap-10 max-w-5xl mx-auto mt-10 px-4 md:px-6"
+          className="flex flex-col md:flex-row items-start justify-between gap-6 sm:gap-8 md:gap-10 max-w-5xl mx-auto mt-6 sm:mt-8 md:mt-10 px-3 sm:px-4 md:px-6"
         >
-          <div className="flex-1 text-center md:text-left w-full min-w-0">
+          <div className="flex-1 text-center md:text-left w-full min-w-0 order-2 md:order-1">
             <motion.h2
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.4 }}
-              className="text-4xl md:text-5xl font-bold mb-4 flex items-center gap-4"
+              className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4 flex flex-col sm:flex-row items-center gap-2 sm:gap-4"
             >
               {content?.title || content?.name}
               <FavoriteButton
@@ -1671,14 +1673,14 @@ export default function WatchPage({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5 }}
-              className="flex flex-wrap items-center gap-4 mb-4"
+              className="flex flex-wrap items-center justify-center md:justify-start gap-2 sm:gap-3 md:gap-4 mb-3 sm:mb-4"
             >
               {content?.vote_average && (
-                <div className="flex items-center gap-2 bg-yellow-500/20 px-3 py-1 rounded-lg">
-                  <span className="text-yellow-500 font-bold text-lg">
+                <div className="flex items-center gap-1.5 sm:gap-2 bg-yellow-500/20 px-2 sm:px-3 py-1 rounded-lg">
+                  <span className="text-yellow-500 font-bold text-base sm:text-lg">
                     ⭐ {content.vote_average.toFixed(1)}
                   </span>
-                  <span className="text-gray-400 text-sm">
+                  <span className="text-gray-400 text-xs sm:text-sm">
                     ({content.vote_count?.toLocaleString() || 0} votes)
                   </span>
                 </div>
@@ -1733,7 +1735,7 @@ export default function WatchPage({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.6 }}
-              className="mt-4 text-lg text-gray-200 leading-relaxed mb-6 break-words"
+              className="mt-3 sm:mt-4 text-sm sm:text-base md:text-lg text-gray-200 leading-relaxed mb-4 sm:mb-6 break-words"
             >
               {content?.overview}
             </motion.p>
@@ -1749,8 +1751,10 @@ export default function WatchPage({
                 transition={{ delay: 0.7 }}
                 className="mt-8 w-full"
               >
-                <h3 className="text-2xl font-bold mb-4">Cast</h3>
-                <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-4 -mx-4 px-4 md:-mx-6 md:px-6">
+                <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">
+                  Cast
+                </h3>
+                <div className="flex gap-3 sm:gap-4 overflow-x-auto scrollbar-hide pb-4 -mx-3 sm:-mx-4 px-3 sm:px-4 md:-mx-6 md:px-6">
                   {credits.cast
                     .slice(0, 10)
                     .map((actor: CastMember, index: number) => (
@@ -1759,22 +1763,22 @@ export default function WatchPage({
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.7 + index * 0.05 }}
-                        className="min-w-[120px] text-center"
+                        className="min-w-[100px] sm:min-w-[120px] text-center"
                       >
                         {actor.profile_path ? (
                           <img
                             src={PROFILE_IMG_BASE_URL + actor.profile_path}
                             alt={actor.name}
-                            className="w-24 h-24 rounded-full object-cover mx-auto mb-2 border-2 border-gray-700"
+                            className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover mx-auto mb-2 border-2 border-gray-700"
                           />
                         ) : (
-                          <div className="w-24 h-24 rounded-full bg-gray-800 mx-auto mb-2 flex items-center justify-center border-2 border-gray-700">
+                          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gray-800 mx-auto mb-2 flex items-center justify-center border-2 border-gray-700">
                             <span className="text-gray-500 text-xs">
                               No Photo
                             </span>
                           </div>
                         )}
-                        <p className="text-sm font-semibold text-white truncate">
+                        <p className="text-xs sm:text-sm font-semibold text-white truncate">
                           {actor.name}
                         </p>
                         <p className="text-xs text-gray-400 truncate">
@@ -1832,7 +1836,7 @@ export default function WatchPage({
               transition={{ delay: 0.4 }}
               src={ORIGINAL_IMG_BASE_URL + content.poster_path}
               alt="Poster"
-              className="max-h-[500px] rounded-lg border-2 border-gray-700 shadow-2xl"
+              className="max-h-[300px] sm:max-h-[400px] md:max-h-[500px] w-auto mx-auto md:mx-0 rounded-lg border-2 border-gray-700 shadow-2xl order-1 md:order-2"
             />
           )}
         </motion.div>
@@ -1844,11 +1848,11 @@ export default function WatchPage({
             transition={{ duration: 0.5, delay: 0.7 }}
             className="mt-16 w-full"
           >
-            <h3 className="text-3xl font-bold mb-6 px-4 md:px-6">
+            <h3 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 px-3 sm:px-4 md:px-6">
               More Like This
             </h3>
             <div
-              className="flex gap-4 overflow-x-auto scrollbar-hide pb-4 -mx-4 px-4 md:-mx-6 md:px-6"
+              className="flex gap-3 sm:gap-4 overflow-x-auto scrollbar-hide pb-4 -mx-3 sm:-mx-4 px-3 sm:px-4 md:-mx-6 md:px-6"
               ref={sliderRef}
             >
               {similarContent.map((item, index) => (
@@ -1857,7 +1861,7 @@ export default function WatchPage({
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: index * 0.1 }}
-                  className="min-w-[200px] group"
+                  className="min-w-[150px] sm:min-w-[180px] md:min-w-[200px] group"
                 >
                   <Link
                     href={`/watch/${item.id}`}

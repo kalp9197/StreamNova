@@ -445,7 +445,9 @@ const EnhancedSearchBar = () => {
         <form onSubmit={handleSearch} className="flex items-center">
           <div
             className={`flex items-center bg-black/70 border border-gray-700 rounded-md transition-all duration-300 ${
-              isOpen ? 'w-96 border-gray-500' : 'w-64'
+              isOpen
+                ? 'w-[calc(100vw-2rem)] sm:w-80 md:w-96 border-gray-500'
+                : 'w-48 sm:w-56 md:w-64'
             }`}
             onClick={() => {
               setIsOpen(true);
@@ -495,7 +497,7 @@ const EnhancedSearchBar = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="absolute top-full left-0 mt-2 w-96 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl z-50 max-h-[600px] overflow-hidden"
+            className="absolute top-full left-0 mt-2 w-[calc(100vw-2rem)] sm:w-80 md:w-96 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl z-50 max-h-[calc(100vh-200px)] sm:max-h-[600px] overflow-hidden"
             id="search-results"
             role="listbox"
             aria-label="Search results"

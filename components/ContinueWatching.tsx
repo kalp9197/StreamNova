@@ -36,13 +36,13 @@ const ContinueWatching = () => {
 
   if (loading) {
     return (
-      <div className="px-5 md:px-20 py-10">
-        <div className="h-8 w-64 bg-gray-800 rounded animate-pulse mb-6"></div>
-        <div className="flex gap-4 overflow-x-scroll scrollbar-hide">
+      <div className="px-4 sm:px-5 md:px-10 lg:px-20 py-6 sm:py-8 md:py-10">
+        <div className="h-6 sm:h-8 w-48 sm:w-64 bg-gray-800 rounded animate-pulse mb-4 sm:mb-6"></div>
+        <div className="flex gap-3 sm:gap-4 overflow-x-scroll scrollbar-hide">
           {[...Array(5)].map((_, i) => (
             <div
               key={i}
-              className="min-w-[300px] h-[170px] bg-gray-800 rounded animate-pulse"
+              className="min-w-[240px] sm:min-w-[280px] md:min-w-[300px] h-[140px] sm:h-[160px] md:h-[170px] bg-gray-800 rounded animate-pulse"
             ></div>
           ))}
         </div>
@@ -55,17 +55,17 @@ const ContinueWatching = () => {
   }
 
   return (
-    <div className="px-5 md:px-20 py-10">
+    <div className="px-4 sm:px-5 md:px-10 lg:px-20 py-6 sm:py-8 md:py-10">
       <motion.h2
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
-        className="text-2xl md:text-3xl font-bold mb-6 flex items-center gap-2"
+        className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 flex items-center gap-2"
       >
-        <Clock className="size-6 text-red-600" />
+        <Clock className="size-5 sm:size-6 text-red-600" />
         Continue Watching
       </motion.h2>
 
-      <div className="flex gap-4 overflow-x-scroll scrollbar-hide pb-4">
+      <div className="flex gap-3 sm:gap-4 overflow-x-scroll scrollbar-hide pb-4">
         {watchHistory.map((item, index) => {
           const progress = calculateProgress(item.currentTime, item.duration);
           const imageSrc = item.backdropPath
@@ -74,13 +74,21 @@ const ContinueWatching = () => {
               ? SMALL_IMG_BASE_URL + item.posterPath
               : null;
 
+          // Generate unique key that includes season/episode for TV shows
+          const uniqueKey =
+            item.contentType === 'tv' &&
+            item.seasonNumber !== undefined &&
+            item.episodeNumber !== undefined
+              ? `${item.contentId}-${item.contentType}-${item.seasonNumber}-${item.episodeNumber}`
+              : `${item.contentId}-${item.contentType}`;
+
           return (
             <motion.div
-              key={`${item.contentId}-${item.contentType}`}
+              key={uniqueKey}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: index * 0.1 }}
-              className="min-w-[300px] md:min-w-[400px] group relative"
+              className="min-w-[240px] sm:min-w-[280px] md:min-w-[320px] lg:min-w-[400px] group relative"
             >
               <Link
                 href={

@@ -125,7 +125,7 @@ const HomeScreen = () => {
           aria-hidden="true"
         />
 
-        <div className="absolute top-0 left-0 w-full h-full flex flex-col justify-center px-8 md:px-16 lg:px-32 pt-20">
+        <div className="absolute top-0 left-0 w-full h-full flex flex-col justify-center px-4 sm:px-6 md:px-8 lg:px-16 xl:px-32 pt-16 sm:pt-20">
           <motion.div
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
@@ -136,7 +136,7 @@ const HomeScreen = () => {
               initial={{ opacity: 0, x: -50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
-              className="mt-4 text-5xl md:text-7xl font-extrabold leading-tight"
+              className="mt-4 text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold leading-tight"
             >
               {trendingContent?.title || trendingContent?.name}
             </motion.h1>
@@ -145,7 +145,7 @@ const HomeScreen = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.8, delay: 0.6 }}
-              className="mt-4 text-lg md:text-xl text-gray-300"
+              className="mt-3 sm:mt-4 text-sm sm:text-base md:text-lg lg:text-xl text-gray-300"
             >
               {trendingContent?.release_date?.split('-')[0] ||
                 trendingContent?.first_air_date?.split('-')[0]}{' '}
@@ -156,7 +156,7 @@ const HomeScreen = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.8, delay: 0.8 }}
-              className="mt-4 text-base md:text-lg text-gray-200 line-clamp-3"
+              className="mt-3 sm:mt-4 text-xs sm:text-sm md:text-base lg:text-lg text-gray-200 line-clamp-2 sm:line-clamp-3"
             >
               {trendingContent?.overview &&
               trendingContent.overview.length > 200
@@ -169,26 +169,32 @@ const HomeScreen = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 1 }}
-            className="flex gap-4 mt-8"
+            className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6 sm:mt-8"
           >
-            <Link href={`/watch/${trendingContent?.id}`}>
+            <Link
+              href={`/watch/${trendingContent?.id}`}
+              className="w-full sm:w-auto"
+            >
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-white hover:bg-gray-200 text-black font-bold py-3 px-8 rounded-md flex items-center gap-2 text-lg transition-colors shadow-lg"
+                className="w-full sm:w-auto bg-white hover:bg-gray-200 text-black font-bold py-2.5 sm:py-3 px-6 sm:px-8 rounded-md flex items-center justify-center gap-2 text-base sm:text-lg transition-colors shadow-lg"
               >
-                <Play className="size-6 fill-black" />
+                <Play className="size-5 sm:size-6 fill-black" />
                 Play
               </motion.button>
             </Link>
 
-            <Link href={`/watch/${trendingContent?.id}`}>
+            <Link
+              href={`/watch/${trendingContent?.id}`}
+              className="w-full sm:w-auto"
+            >
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-gray-700/80 hover:bg-gray-700 text-white font-bold py-3 px-8 rounded-md flex items-center gap-2 text-lg transition-colors backdrop-blur-sm"
+                className="w-full sm:w-auto bg-gray-700/80 hover:bg-gray-700 text-white font-bold py-2.5 sm:py-3 px-6 sm:px-8 rounded-md flex items-center justify-center gap-2 text-base sm:text-lg transition-colors backdrop-blur-sm"
               >
-                <Info className="size-6" />
+                <Info className="size-5 sm:size-6" />
                 More Info
               </motion.button>
             </Link>
@@ -200,8 +206,10 @@ const HomeScreen = () => {
         <ContinueWatching />
 
         {/* Genre Filter Chips */}
-        <div className="px-5 md:px-20">
-          <h2 className="text-2xl font-bold mb-4">Browse by Genre</h2>
+        <div className="px-4 sm:px-5 md:px-10 lg:px-20">
+          <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">
+            Browse by Genre
+          </h2>
           <div className="flex gap-2 flex-wrap">
             {[
               { id: 12, name: 'Adventure' },

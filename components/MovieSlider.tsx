@@ -151,11 +151,11 @@ const MovieSlider = ({ category }: MovieSliderProps) => {
       initial={{ opacity: 0 }}
       whileInView={{ opacity: 1 }}
       viewport={{ once: true }}
-      className="bg-black text-white relative px-5 md:px-20"
+      className="bg-black text-white relative px-4 sm:px-5 md:px-10 lg:px-20"
       onMouseEnter={() => setShowArrows(true)}
       onMouseLeave={() => setShowArrows(false)}
     >
-      <h2 className="mb-4 text-2xl md:text-3xl font-bold">
+      <h2 className="mb-3 sm:mb-4 text-xl sm:text-2xl md:text-3xl font-bold">
         {formattedCategoryName} {formattedContentType}
       </h2>
 
@@ -181,7 +181,7 @@ const MovieSlider = ({ category }: MovieSliderProps) => {
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.05 }}
-              className="min-w-[250px] md:min-w-[300px] group relative"
+              className="min-w-[180px] sm:min-w-[200px] md:min-w-[250px] lg:min-w-[300px] group relative"
               onMouseEnter={(e) => handleMouseEnter(item, e)}
               onMouseLeave={handleMouseLeave}
               onMouseMove={(e) => handleMouseMove(item, e)}
@@ -256,7 +256,7 @@ const MovieSlider = ({ category }: MovieSliderProps) => {
             animate={{ opacity: 1 }}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
-            className="absolute top-1/2 -translate-y-1/2 left-5 md:left-24 flex items-center justify-center size-12 rounded-full bg-black/80 hover:bg-black text-white z-10 backdrop-blur-sm shadow-lg"
+            className="absolute top-1/2 -translate-y-1/2 left-2 sm:left-4 md:left-5 lg:left-24 flex items-center justify-center size-10 sm:size-12 rounded-full bg-black/80 hover:bg-black text-white z-10 backdrop-blur-sm shadow-lg"
             onClick={scrollLeft}
           >
             <ChevronLeft size={24} />
@@ -267,7 +267,7 @@ const MovieSlider = ({ category }: MovieSliderProps) => {
             animate={{ opacity: 1 }}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
-            className="absolute top-1/2 -translate-y-1/2 right-5 md:right-24 flex items-center justify-center size-12 rounded-full bg-black/80 hover:bg-black text-white z-10 backdrop-blur-sm shadow-lg"
+            className="absolute top-1/2 -translate-y-1/2 right-2 sm:right-4 md:right-5 lg:right-24 flex items-center justify-center size-10 sm:size-12 rounded-full bg-black/80 hover:bg-black text-white z-10 backdrop-blur-sm shadow-lg"
             onClick={scrollRight}
           >
             <ChevronRight size={24} />

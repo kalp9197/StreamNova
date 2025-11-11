@@ -139,7 +139,7 @@ const SearchPageContent = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="flex gap-2 items-stretch mb-8 max-w-2xl mx-auto"
+          className="flex flex-col sm:flex-row gap-2 items-stretch mb-6 sm:mb-8 max-w-2xl mx-auto w-full"
           onSubmit={handleSearch}
         >
           <div className="flex-1 relative">
@@ -149,7 +149,7 @@ const SearchPageContent = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search movies, TV shows, and people..."
-              className="w-full pl-12 pr-12 py-3 rounded-lg bg-gray-900 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:border-red-600 focus:ring-2 focus:ring-red-600/20 transition-all"
+              className="w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-2.5 sm:py-3 rounded-lg bg-gray-900 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:border-red-600 focus:ring-2 focus:ring-red-600/20 transition-all text-sm sm:text-base"
               required
             />
             {searchTerm && (
@@ -167,7 +167,7 @@ const SearchPageContent = () => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             disabled={isLoading}
-            className="bg-red-600 hover:bg-red-700 text-white py-3 px-8 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="bg-red-600 hover:bg-red-700 text-white py-2.5 sm:py-3 px-6 sm:px-8 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
           >
             {isLoading ? (
               <>
@@ -204,7 +204,7 @@ const SearchPageContent = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+              className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6"
             >
               {filteredResults.map((result, index) => {
                 const mediaType = result.media_type || 'movie';

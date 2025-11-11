@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from 'react-hot-toast';
 import BackToTop from '@/components/BackToTop';
@@ -8,6 +8,12 @@ import MobileBottomNav from '@/components/MobileBottomNav';
 export const metadata: Metadata = {
   title: 'StreamNova - Your Streaming Platform',
   description: 'Watch movies and TV shows',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({

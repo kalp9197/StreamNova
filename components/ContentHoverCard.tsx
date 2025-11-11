@@ -32,7 +32,8 @@ const ContentHoverCard = ({ content, isVisible, position }: HoverCardProps) => {
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isVisible) return;
+    // Hide hover card on mobile devices (touch devices)
+    if (!isVisible || window.innerWidth < 768) return;
 
     const updatePosition = () => {
       const viewportWidth = window.innerWidth;
@@ -97,7 +98,13 @@ const ContentHoverCard = ({ content, isVisible, position }: HoverCardProps) => {
     };
   }, [isVisible, position]);
 
-  if (!isVisible || !content) return null;
+  // Hide hover card on mobile devices
+  if (
+    !isVisible ||
+    !content ||
+    (typeof window !== 'undefined' && window.innerWidth < 768)
+  )
+    return null;
 
   const title = content.title || content.name || 'Unknown';
   const releaseDate = content.release_date || content.first_air_date;

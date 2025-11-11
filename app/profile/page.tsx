@@ -111,30 +111,30 @@ const ProfilePage = () => {
   return (
     <div className="bg-black min-h-screen text-white pt-20">
       <Navbar />
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-4xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gray-900 rounded-lg p-8"
+          className="bg-gray-900 rounded-lg p-4 sm:p-6 md:p-8"
         >
-          <h1 className="text-4xl font-bold mb-8 flex items-center gap-3">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6 sm:mb-8 flex items-center gap-2 sm:gap-3">
             <User className="size-10 text-red-600" />
             Profile Settings
           </h1>
 
           {/* Avatar Section */}
-          <div className="flex flex-col items-center mb-8">
+          <div className="flex flex-col items-center mb-6 sm:mb-8">
             <div className="relative">
               {displayImage ? (
                 <motion.img
                   src={displayImage}
                   alt="Avatar"
-                  className="size-32 rounded-full object-cover border-4 border-gray-700"
+                  className="size-24 sm:size-28 md:size-32 rounded-full object-cover border-4 border-gray-700"
                   whileHover={{ scale: 1.05 }}
                 />
               ) : (
-                <div className="size-32 rounded-full bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center border-4 border-gray-700">
-                  <User className="size-16 text-white" />
+                <div className="size-24 sm:size-28 md:size-32 rounded-full bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center border-4 border-gray-700">
+                  <User className="size-12 sm:size-14 md:size-16 text-white" />
                 </div>
               )}
               {isEditing && (
@@ -195,13 +195,13 @@ const ProfilePage = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-4 mt-8">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6 sm:mt-8">
             {!isEditing ? (
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setIsEditing(true)}
-                className="bg-red-600 hover:bg-red-700 text-white py-3 px-8 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white py-2.5 sm:py-3 px-6 sm:px-8 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
               >
                 <User className="size-5" />
                 Edit Profile
@@ -213,7 +213,7 @@ const ProfilePage = () => {
                   whileTap={{ scale: 0.95 }}
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="bg-red-600 hover:bg-red-700 text-white py-3 px-8 rounded-lg font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white py-2.5 sm:py-3 px-6 sm:px-8 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSaving ? (
                     <>
@@ -232,7 +232,7 @@ const ProfilePage = () => {
                   whileTap={{ scale: 0.95 }}
                   onClick={handleCancel}
                   disabled={isSaving}
-                  className="bg-gray-700 hover:bg-gray-600 text-white py-3 px-8 rounded-lg font-semibold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full sm:w-auto bg-gray-700 hover:bg-gray-600 text-white py-2.5 sm:py-3 px-6 sm:px-8 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <X className="size-5" />
                   Cancel
